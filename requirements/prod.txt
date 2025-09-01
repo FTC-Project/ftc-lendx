@@ -1,0 +1,6 @@
+# Core dependencies for the XRPL bot
+Django>=4.2,<5.0
+djangorestframework>=3.14.0
+python-telegram-bot==21.*
+psycopg2-binary>=2.9.0
+python-dotenv>=1.0.0

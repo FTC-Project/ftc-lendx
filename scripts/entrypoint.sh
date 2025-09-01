@@ -1,6 +1,4 @@
-#!/usr/bin/env bash
+# scripts/entrypoint.sh (dev)
 set -e
-
-# Migrate & run dev server inside container
 python manage.py migrate --noinput
-exec python manage.py runserver 0.0.0.0:8000 --settings=bot_backend.settings.docker
+exec uvicorn bot_backend.asgi:application --host 0.0.0.0 --port 8000 --reload

@@ -7,19 +7,20 @@ A Django-based backend application with Telegram bot integration for XRPL (XRP L
 ```
 fse-xrpl-bot/
 ├── bot_backend/           # Django backend application
-│   ├── apps/             # Django apps
-│   │   └── users/        # User management app
-│   ├── settings/         # Django settings (base, dev, prod)
+│   ├── apps/             # Django apps (e.g. users/)
+│   ├── settings/         # Django settings (base, dev, prod, docker)
 │   └── ...
 ├── telegram_bot/         # Telegram bot implementation
-├── compose/              # Docker compose configurations
-├── deploy/               # Deployment files (Dockerfile, etc.)
+├── compose/              # Docker Compose configurations
+├── deploy/               # Deployment files (Dockerfile, nginx, gunicorn)
 ├── requirements/         # Python dependencies
-│   ├── base.txt         # Core dependencies
-│   ├── dev.txt          # Development dependencies
-│   └── prod.txt         # Production dependencies
+│   ├── base.txt
+│   ├── dev.txt
+│   └── prod.txt
 ├── scripts/              # Utility scripts
-└── tests/               # Test files
+├── tests/                # Test files
+└── Makefile              # Shortcuts for Docker & Django commands
+
 ```
 
 ## 🚀 Quick Start
@@ -52,19 +53,25 @@ You need one of the following setups:
    - `DJANGO_SECRET_KEY`: Generate a secure secret key
    - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token, will get this later.
    - Other settings as needed
-
-3. **Build and run with Docker Compose**
+3. **Use Makefile commands**
    ```bash
-   # For development
-   docker-compose -f compose/docker-compose.dev.yml up --build
+    make up             # build + start services
+    make down           # stop services (keep DB data)
+    make build          # rebuild the web container
+    make logs           # follow Django logs
 
-   # For production
-   docker-compose -f compose/docker-compose.prod.yml up --build
-   ```
+    # Django manage.py shortcuts
+    make migrate
+    make makemigrations
+    make createsuperuser
+    make shell
+    make manage CMD=showmigrations
+    ```
+
 
 4. **Access the application**
    - Django backend: http://localhost:8000
-   - PostgreSQL: localhost:5432 (dev mode only)
+   - PostgreSQL: localhost:5433 (Or whatever is mapped in `docker-compose.dev.yml`)
 
 ### 🐍 Local Development Setup
 
@@ -74,10 +81,6 @@ You need one of the following setups:
    ```bash
    conda create -n fse-xrpl-bot python=3.11 -y
    conda activate fse-xrpl-bot
-   ```
-
-2. **Install dependencies**
-   ```bash
    pip install -r requirements/dev.txt
    ```
 
@@ -86,23 +89,19 @@ You need one of the following setups:
 1. **Create and activate virtual environment**
    ```bash
    python -m venv venv
-   
-   # Windows
-   venv\Scripts\activate
-   
-   # macOS/Linux
-   source venv/bin/activate
-   ```
+    # Windows
+    venv\Scripts\activate
+    # macOS/Linux
+    source venv/bin/activate
 
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements/dev.txt
-   ```
+    pip install -r requirements/dev.txt
+    ```
 
 #### Database Setup for Local Development
 
 1. **Install and start PostgreSQL**
    - Follow [PostgreSQL installation guide](https://www.postgresql.org/download/)
+   - (Recommended) Download [PGAdmin](https://www.pgadmin.org/download/) for a GUI interface
 
 2. **Create database and user**
    ```sql
@@ -138,7 +137,7 @@ Key environment variables in `.env`:
 | `DJANGO_SECRET_KEY` | Django secret key | `change-me` |
 | `ALLOWED_HOSTS` | Allowed hosts for Django | `localhost,127.0.0.1` |
 | `DB_HOST` | Database host | `localhost` |
-| `DB_PORT` | Database port | `5432` |
+| `DB_PORT` | Database port | `5433` |
 | `DB_NAME` | Database name | `fse_db` |
 | `DB_USER` | Database user | `fse_user` |
 | `DB_PASSWORD` | Database password | `fse_password` |
@@ -180,11 +179,14 @@ python manage.py migrate
 python manage.py showmigrations
 ```
 
-### Database Access
+### Database Management
 
 **Using Docker:**
 ```bash
-docker-compose -f compose/docker-compose.dev.yml exec db psql -U fse_user -d fse_db
+make migrate
+make makemigrations
+make createsuperuser
+make manage CMD="dbshell"
 ```
 
 **Local PostgreSQL:**
@@ -196,14 +198,10 @@ psql -h localhost -U fse_user -d fse_db
 
 ```bash
 # Run all tests
-python manage.py test
+make manage CMD="test"
+# or directly
+docker compose -f compose/docker-compose.dev.yml exec web python manage.py test
 
-# Run specific app tests
-python manage.py test bot_backend.apps.users
-
-# Run with coverage (if installed)
-coverage run manage.py test
-coverage report
 ```
 
 ## 📚 API Documentation

@@ -1,6 +1,19 @@
-# Core dependencies for the XRPL bot
-Django>=4.2,<5.0
-djangorestframework>=3.14.0
-python-telegram-bot==21.*
-psycopg2-binary>=2.9.0
-python-dotenv>=1.0.0
+anyio==4.10.0
+asgiref==3.9.1
+certifi==2025.8.3
+charset-normalizer==3.4.3
+Django==5.2.5
+djangorestframework==3.16.1
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.10
+psycopg2-binary==2.9.10
+python-dotenv==1.1.1
+python-telegram-bot==22.3
+requests==2.32.5
+sniffio==1.3.1
+sqlparse==0.5.3
+typing_extensions==4.15.0
+tzdata==2025.2
+urllib3==2.5.0

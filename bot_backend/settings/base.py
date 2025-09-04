@@ -1,5 +1,7 @@
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file if present
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-insecure-key")
@@ -10,7 +12,7 @@ INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
     "rest_framework",
-    "bot_backend.apps.users",
+    "bot_backend.apps.users", "bot_backend.apps.botutils"
 ]
 
 MIDDLEWARE = [

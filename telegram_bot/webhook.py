@@ -6,7 +6,7 @@ from django.views.decorators.csrf import csrf_exempt
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
 from bot_backend.apps.users.models import TelegramUser, Wallet
-from bot_backend.apps.users.xrpl_service import create_user_wallet
+from bot_backend.apps.users.xrpl_service import create_user_wallet, get_balance
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 API_URL = f"https://api.telegram.org/bot{TOKEN}"
@@ -135,9 +135,15 @@ Example: /send @alice 10.5"""
             # user = TelegramUser.objects.get(telegram_id=msg.user_id)
             # wallet_address = user.wallet.address if user.wallet else None
             # balance = get_xrp_balance_sync(wallet_address)
-
-            # Placeholder for now
-            balance = 0.0
+            user = TelegramUser.objects.get(telegram_id=msg.user_id)
+            if not hasattr(user, 'wallet'):
+                self.send_message(msg.chat_id, "❌ You don't have a wallet yet. Use /wallet to create one.")
+                return
+            wallet_address = Wallet.objects.get(user=user).address
+            balance = get_balance(wallet_address)
+            if balance is None:
+                self.send_message(msg.chat_id, "❌ Could not retrieve balance. Please try again later.")
+                return
             self.send_message(msg.chat_id, f"💰 Your balance: {balance} XRP")
 
         except TelegramUser.DoesNotExist:

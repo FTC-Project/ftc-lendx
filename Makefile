@@ -32,3 +32,7 @@ createsuperuser:
 
 shell:
 	docker compose -f compose/docker-compose.dev.yml exec web python manage.py shell
+
+# Execute the manage.py set_webhook command within the web container
+setwebhook:
+	docker compose -f compose/docker-compose.dev.yml exec web python manage.py set_webhook

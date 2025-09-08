@@ -5,8 +5,8 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
-from bot_backend.apps.users.models import TelegramUser, Wallet
-from bot_backend.apps.users.xrpl_service import create_user_wallet, get_balance
+from bot_backend.apps.users.models import TelegramUser, Wallet, Transfer
+from bot_backend.apps.users.xrpl_service import create_user_wallet, get_balance, send_xrp
 
 TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
 API_URL = f"https://api.telegram.org/bot{TOKEN}"
@@ -33,6 +33,11 @@ class TelegramMessage:
 
 class TelegramBot:
     """Core bot logic - simple and synchronous for clarity."""
+
+    @staticmethod
+    def user_exists(telegram_id: int) -> bool:
+        """Check if user exists in DB."""
+        return TelegramUser.objects.filter(telegram_id=telegram_id).exists()
 
     def __init__(self):
         self.api_url = API_URL
@@ -131,10 +136,9 @@ Example: /send @alice 10.5"""
     def cmd_balance(self, msg: TelegramMessage):
         """Check user's XRP balance."""
         try:
-            # TODO: Get user's wallet from database
-            # user = TelegramUser.objects.get(telegram_id=msg.user_id)
-            # wallet_address = user.wallet.address if user.wallet else None
-            # balance = get_xrp_balance_sync(wallet_address)
+            if not self.user_exists(msg.user_id):
+                self.send_message(msg.chat_id, "❌ Please use /start first to create your account.")
+                return
             user = TelegramUser.objects.get(telegram_id=msg.user_id)
             if not hasattr(user, 'wallet'):
                 self.send_message(msg.chat_id, "❌ You don't have a wallet yet. Use /wallet to create one.")
@@ -154,33 +158,62 @@ Example: /send @alice 10.5"""
 
     def cmd_send(self, msg: TelegramMessage):
         """Send XRP to another user."""
+        if not self.user_exists(msg.user_id):
+            self.send_message(msg.chat_id, "❌ Please use /start first to create your account.")
+            return
         if not msg.args or len(msg.args) < 2:
             self.send_message(
                 msg.chat_id,
                 "Usage: /send @username amount\nExample: /send @alice 10.5"
             )
             return
-
         try:
             recipient_username = msg.args[0].lstrip('@')
             amount = float(msg.args[1])
-
+            # Cannot send to self
+            if recipient_username.lower() == (msg.username or "").lower():
+                self.send_message(msg.chat_id, "❌ You cannot send XRP to yourself.")
+                return
+            # Cannot send to non-existent user
+            if not TelegramUser.objects.filter(username__iexact=recipient_username).exists():
+                self.send_message(msg.chat_id, f"❌ User @{recipient_username} not found.")
+                return
+            # Amount must be positive
             if amount <= 0:
                 self.send_message(msg.chat_id, "❌ Amount must be greater than 0")
                 return
-
-            # TODO: Implement XRPL transaction
-            # sender = TelegramUser.objects.get(telegram_id=msg.user_id)
-            # recipient = TelegramUser.objects.get(username=recipient_username)
-            # tx_hash = send_xrp_sync(sender.wallet, recipient.wallet.address, amount)
-
+            # Check sender's balance
+            sender = TelegramUser.objects.get(telegram_id=msg.user_id)
+            if not hasattr(sender, 'wallet'):
+                self.send_message(msg.chat_id, "❌ You don't have a wallet yet. Use /wallet to create one.")
+                return
+            sender_wallet = Wallet.objects.get(user=sender)
+            sender_balance = get_balance(sender_wallet.address)
+            # Insufficient balance or error fetching balance
+            # In the future, we will calculate and include transaction fees
+            if sender_balance is None or sender_balance < amount:
+                self.send_message(msg.chat_id, "❌ Insufficient balance.")
+                return
+            # Recipient must have a wallet too
+            recipient = TelegramUser.objects.get(username__iexact=recipient_username)
+            if not hasattr(recipient, 'wallet'):
+                self.send_message(msg.chat_id, f"❌ User @{recipient_username} does not have a wallet yet.")
+                return
+            recipient_wallet = Wallet.objects.get(user=recipient)
+            # Remember in future to handle fees, memos, decrypting secrets, etc.
+            # For now, we just simulate sending
+            tx_hash = send_xrp(sender_wallet.secret_encrypted.tobytes().decode(), recipient_wallet.address, amount)
+            if not tx_hash:
+                self.send_message(msg.chat_id, "❌ Transaction failed. Please try again later.")
+                return
+            # Record the transfer in DB, do this later
+            # Transfer stuff
             # Placeholder response
             self.send_message(
                 msg.chat_id,
                 f"✅ Sent {amount} XRP to @{recipient_username}!\n"
-                f"TX Hash: [XRPL integration coming soon]"
+                f"TX Hash: {tx_hash}"
             )
-
         except ValueError:
             self.send_message(msg.chat_id, "❌ Invalid amount. Please enter a valid number.")
         except TelegramUser.DoesNotExist:

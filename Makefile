@@ -1,4 +1,4 @@
-.PHONY: up down build logs manage migrate makemigrations createsuperuser shell
+.PHONY: up down build logs manage migrate makemigrations createsuperuser shell setwebhook createdummyuser
 
 # Start services
 up:
@@ -36,3 +36,7 @@ shell:
 # Execute the manage.py set_webhook command within the web container
 setwebhook:
 	docker compose -f compose/docker-compose.dev.yml exec web python manage.py set_webhook
+
+createdummyuser:
+	docker compose -f compose/docker-compose.dev.yml exec web python manage.py create_dummy_user
+

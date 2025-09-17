@@ -2,13 +2,13 @@ import time
 from dataclasses import dataclass
 from typing import Optional
 
-import requests
 from xrpl.clients import JsonRpcClient
 from xrpl.models.requests import AccountInfo, AccountTx
 from xrpl.models.transactions import Payment
 from xrpl.transaction import submit_and_wait
 from xrpl.utils import xrp_to_drops, drops_to_xrp
 from xrpl.wallet import Wallet, generate_faucet_wallet
+
 
 TESTNET_RPC = "https://s.altnet.rippletest.net:51234"
 TESTNET_FAUCET = "https://faucet.altnet.rippletest.net/accounts"
@@ -59,7 +59,6 @@ class XRPLClient:
                 destination=destination,
                 amount=str(xrp_to_drops(amount_xrp)),  # Convert to drops
             )
-
             # Submit transaction and wait for validation
             tx_response = submit_and_wait(payment, self.client, sender_wallet)
 
@@ -91,9 +90,8 @@ class XRPLClient:
             raise
 
     def create_and_fund_wallet(self) -> Optional[GeneratedWallet]:
-        """Use the old generate_faucet_wallet method - sometimes more reliable."""
         try:
-            print("🚰 Using legacy faucet wallet generation...")
+            print("🚰 Generating Wallet...")
             wallet = generate_faucet_wallet(self.client, debug=True)
 
             return GeneratedWallet(

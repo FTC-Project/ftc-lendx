@@ -5,6 +5,10 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from typing import Optional, Dict, Any
 from dataclasses import dataclass
+
+from xrpl.utils import xrp_to_drops
+
+from bot_backend.apps.users.crypto import encrypt_secret, decrypt_secret
 from bot_backend.apps.users.models import TelegramUser, Wallet, Transfer
 from bot_backend.apps.users.xrpl_service import create_user_wallet, get_balance, send_xrp
 
@@ -127,6 +131,7 @@ Use /help to see available commands."""
 /balance - Check your XRP balance  
 /send @username amount - Send XRP to another user
 /prices [days] - Get XRP price data (default: 30 days)
+/wallet - Create a new XRPL wallet
 /help - Show this help message
 
 Example: /send @alice 10.5"""
@@ -201,14 +206,26 @@ Example: /send @alice 10.5"""
                 return
             recipient_wallet = Wallet.objects.get(user=recipient)
             # Remember in future to handle fees, memos, decrypting secrets, etc.
-            # For now, we just simulate sending
-            tx_hash = send_xrp(sender_wallet.secret_encrypted.tobytes().decode(), recipient_wallet.address, amount)
+            transfer = Transfer.objects.create(
+                status="pending",
+                sender=sender,
+                recipient=recipient,
+                destination_address=recipient_wallet.address,
+                amount_drops=int(xrp_to_drops(amount)),
+            )
+            tx_hash = send_xrp(decrypt_secret(sender_wallet.secret_encrypted.tobytes()), recipient_wallet.address, amount)
             if not tx_hash:
+                transfer.tx_hash = None
+                transfer.status = "failed"
+                transfer.save()
                 self.send_message(msg.chat_id, "❌ Transaction failed. Please try again later.")
                 return
-            # Record the transfer in DB, do this later
-            # Transfer stuff
-            # Placeholder response
+            # Log the transfer in DB
+            transfer.tx_hash = tx_hash
+            transfer.status = "validated"
+            transfer.save()
+            print(f"🔍 Sent {amount} XRP from {sender.telegram_id} to {recipient.telegram_id}, TX: {tx_hash}")
+
             self.send_message(
                 msg.chat_id,
                 f"✅ Sent {amount} XRP to @{recipient_username}!\n"
@@ -263,7 +280,7 @@ Example: /send @alice 10.5"""
                 user=user,
                 network="testnet",
                 address=gen_wallet.classic_address,
-                secret_encrypted=gen_wallet.seed.encode()  # In real app, encrypt this!
+                secret_encrypted=encrypt_secret(gen_wallet.seed)
             )
             print(f"🔍 Created wallet for user {user.telegram_id}: {gen_wallet.classic_address}")
             self.send_message(

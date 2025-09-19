@@ -3,13 +3,14 @@ import json
 from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
-from .bot import API_URL, TOKEN, bot
+from .bot import API_URL, TOKEN
 from .messages import parse_telegram_message
+from .tasks import handle_message_task
 
 
 @csrf_exempt
 def telegram_webhook(request):
-    """Handle incoming webhook POSTs from Telegram."""
+    """Process Telegram updates by enqueueing a Celery task."""
     if request.method != "POST":
         return HttpResponse(status=405)
 
@@ -18,14 +19,13 @@ def telegram_webhook(request):
         msg = parse_telegram_message(data)
 
         if msg:
-            print(f"Processing: {msg.text} from user {msg.user_id}")
-            bot.handle_message(msg)
-            print(f"Completed: {msg.text}")
+            print(f"[webhook] Received command '{msg.command}' from user {msg.user_id}")
+            handle_message_task.delay(msg.__dict__)
         else:
-            print("Received non-command message, ignoring")
+            print("[webhook] Ignoring non-command payload")
 
-    except Exception as exc:  # noqa: BLE001 - ensure we never break Telegram retries
-        print(f"Webhook error: {exc}")
+    except Exception as exc:  # noqa: BLE001 - never break Telegram retries
+        print(f"[webhook] Error: {exc}")
 
     return JsonResponse({"ok": True})
 

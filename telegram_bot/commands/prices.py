@@ -7,21 +7,7 @@ if TYPE_CHECKING:  # pragma: no cover - type checking only
 
 
 def handle(bot: "TelegramBot", msg: TelegramMessage) -> None:
-    """Get XRP price data."""
-    days = 30
+    """Queue price lookup so it runs in the Celery worker."""
+    from ..tasks import prices_command_task
 
-    if msg.args:
-        try:
-            days = int(msg.args[0])
-            days = max(1, min(days, 365))
-        except ValueError:
-            bot.send_message(msg.chat_id, "❌ Invalid number of days. Using default (30).")
-
-    try:
-        bot.send_message(
-            msg.chat_id,
-            f"📈 XRP prices for the last {days} days:\n[Price API integration coming soon]",
-        )
-    except Exception as exc:
-        print(f"❌ Error in prices command: {exc}")
-        bot.send_message(msg.chat_id, "❌ Could not fetch price data. Please try again later.")
+    prices_command_task.delay(msg.__dict__)

@@ -1,4 +1,4 @@
-.PHONY: up down build logs manage migrate makemigrations createsuperuser shell setwebhook createdummyuser
+.PHONY: up down build logs manage migrate makemigrations createsuperuser shell setwebhook createdummyuser worker
 
 # Start services
 up:
@@ -10,11 +10,11 @@ down:
 
 # Rebuild web container
 build:
-	docker compose -f compose/docker-compose.dev.yml build web
+	docker compose -f compose/docker-compose.dev.yml build web celery_worker
 
 # View logs
 logs:
-	docker compose -f compose/docker-compose.dev.yml logs -f web
+	docker compose -f compose/docker-compose.dev.yml logs -f web celery_worker
 
 # Run any manage.py command: make manage CMD=migrate
 manage:
@@ -40,3 +40,6 @@ setwebhook:
 createdummyuser:
 	docker compose -f compose/docker-compose.dev.yml exec web python manage.py create_dummy_user
 
+# Run the Celery worker manually
+worker:
+	docker compose -f compose/docker-compose.dev.yml run --rm celery_worker

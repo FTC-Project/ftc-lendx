@@ -59,7 +59,7 @@ class TelegramBot:
         try:
             handler(self, msg)
             print(f"[bot] Handler queued for command '{msg.command}'")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:  # Never crash the bot
             print(f"[bot] Error while scheduling {msg.command}: {exc}")
             self.send_message(msg.chat_id, f"❌ Sorry, something went wrong: {exc}")
 

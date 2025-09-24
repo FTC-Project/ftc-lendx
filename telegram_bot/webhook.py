@@ -5,7 +5,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from .bot import API_URL, TOKEN
 from .messages import parse_telegram_message
-from .tasks import handle_message_task
+from .tasks import handle_message
 
 
 @csrf_exempt
@@ -15,16 +15,17 @@ def telegram_webhook(request):
         return HttpResponse(status=405)
 
     try:
+        # TODO: Validate request by header X-Telegram-Bot-Api-Secret-Token
         data = json.loads(request.body.decode("utf-8"))
         msg = parse_telegram_message(data)
 
         if msg:
             print(f"[webhook] Received command '{msg.command}' from user {msg.user_id}")
-            handle_message_task.delay(msg.__dict__)
+            handle_message(msg)
         else:
             print("[webhook] Ignoring non-command payload")
 
-    except Exception as exc:  # noqa: BLE001 - never break Telegram retries
+    except Exception as exc:  # never break Telegram retries
         print(f"[webhook] Error: {exc}")
 
     return JsonResponse({"ok": True})

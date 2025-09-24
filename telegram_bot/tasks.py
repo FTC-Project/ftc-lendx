@@ -20,11 +20,9 @@ def _build_message(payload: Dict[str, Any]) -> TelegramMessage:
     return TelegramMessage(**payload)
 
 
-@shared_task(queue="telegram_bot")
-def handle_message_task(message_data: Dict[str, Any]) -> None:
+def handle_message(message: TelegramMessage) -> None:
     """Dispatch an incoming Telegram command."""
-    msg = _build_message(message_data)
-    bot.handle_message(msg)
+    bot.handle_message(message)
 
 
 @shared_task(queue="telegram_bot")

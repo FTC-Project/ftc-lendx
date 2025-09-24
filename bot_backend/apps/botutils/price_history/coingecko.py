@@ -195,7 +195,7 @@ def fetch_price_history(
         sorted_items = sorted(values.items())
         first = sorted_items[0][1]
         last = sorted_items[-1][1]
-        if first in (None, 0):
+        if first == 0:
             return None
         return ((last - first) / first) * 100
 

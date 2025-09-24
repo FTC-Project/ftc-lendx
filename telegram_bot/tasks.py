@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+from datetime import date
 from typing import Any, Dict, List, Optional
 
 from celery import shared_task
 from xrpl.utils import xrp_to_drops
 
+from bot_backend.apps.botutils.price_history.coingecko import (
+    CoinGeckoAPIError,
+    PricePoint,
+    PriceHistory,
+    fetch_price_history,
+)
 from bot_backend.apps.users.crypto import decrypt_secret, encrypt_secret
 from bot_backend.apps.users.models import TelegramUser, Transfer, Wallet
 from bot_backend.apps.users.xrpl_service import create_user_wallet, get_balance, send_xrp
@@ -13,11 +20,75 @@ from .bot import bot
 from .messages import TelegramMessage
 
 
+from dataclasses import fields
+
+TELEGRAM_MESSAGE_FIELDS = {f.name for f in fields(TelegramMessage)}
+
 def _build_message(payload: Dict[str, Any]) -> TelegramMessage:
-    args: Optional[List[str]] = payload.get("args")
-    if args is None:
-        payload = {**payload, "args": []}
-    return TelegramMessage(**payload)
+    cleaned = {k: v for k, v in payload.items() if k in TELEGRAM_MESSAGE_FIELDS}
+    if cleaned.get("args") is None:
+        cleaned["args"] = []
+    return TelegramMessage(**cleaned)
+
+
+def _parse_iso_date(value: Optional[str]) -> Optional[date]:
+    if not value:
+        return None
+    try:
+        return date.fromisoformat(value)
+    except ValueError:
+        return None
+
+
+def _format_currency(currency: str, value: Optional[float]) -> str:
+    if value is None:
+        return f"{currency.upper()}: --"
+    prefix = "$" if currency == "usd" else "R" if currency == "zar" else ""
+    return f"{currency.upper()}: {prefix}{value:,.4f}"
+
+
+def _format_price_history_message(history: PriceHistory) -> str:
+    if not history.prices:
+        return "❌ No price data returned for the requested range."
+
+    header = f"📈 {history.coin_symbol.upper()} price history"
+    range_line = f"Range: {history.start.isoformat()} → {history.end.isoformat()}"
+
+    lines: List[str] = []
+    points = history.prices
+    show_summary = len(points) > 14
+    segments: List[List[PricePoint]] = [points]
+    if show_summary:
+        segments = [points[:7], points[-7:]]
+
+    for index, segment in enumerate(segments):
+        for point in segment:
+            usd_text = _format_currency("usd", point.values.get("usd"))
+            zar_text = _format_currency("zar", point.values.get("zar"))
+            lines.append(f"• {point.date.isoformat()}: {usd_text} | {zar_text}")
+        if show_summary and index == 0:
+            lines.append("• …")
+
+    change_parts: List[str] = []
+    for currency in ("usd", "zar"):
+        change_value = history.percent_change.get(currency)
+        if change_value is not None:
+            change_parts.append(f"{currency.upper()}: {change_value:+.2f}%")
+    change_line = f"📊 Change: {' | '.join(change_parts)}" if change_parts else ""
+
+    warning_line = ""
+    if history.warnings:
+        warning_bits = [f"{cur.upper()}: {msg}" for cur, msg in history.warnings.items()]
+        warning_line = f"⚠️ {' | '.join(warning_bits)}"
+
+    message_sections = [header, range_line, ""]
+    message_sections.extend(lines)
+    if change_line:
+        message_sections.extend(["", change_line])
+    if warning_line:
+        message_sections.extend(["", warning_line])
+
+    return "\n".join(section for section in message_sections if section).strip()
 
 
 def handle_message(message: TelegramMessage) -> None:
@@ -67,7 +138,8 @@ def help_command_task(message_data: Dict[str, Any]) -> None:
         "/start - Get started with the bot\n"
         "/balance - Check your XRP balance\n"
         "/send @username amount - Send XRP to another user\n"
-        "/prices [days] - Get XRP price data (default: 30 days)\n"
+        "/prices [symbol] [days] - Get price history (default: XRP, 30 days)\n"
+        "/prices [symbol] [start] [end] - Use a custom range (YYYY-MM-DD)\n"
         "/wallet - Create a new XRPL wallet\n"
         "/help - Show this help message\n\n"
         "Example: /send @alice 10.5"
@@ -202,27 +274,33 @@ def send_command_task(message_data: Dict[str, Any]) -> None:
 
 
 @shared_task(queue="telegram_bot")
-def prices_command_task(message_data: Dict[str, Any]) -> None:
+def fetch_price_history_task(message_data: Dict[str, Any]) -> None:
     msg = _build_message(message_data)
-    args = msg.args or []
-    days = 30
+    symbol = (message_data.get("coin_symbol") or "xrp").lower()
+    start = _parse_iso_date(message_data.get("from_date"))
+    end = _parse_iso_date(message_data.get("to_date"))
 
-    if args:
-        try:
-            days = int(args[0])
-            days = max(1, min(days, 365))
-        except ValueError:
-            bot.send_message(msg.chat_id, "❌ Invalid number of days. Using default (30).")
-            days = 30
+    days_value = message_data.get("days")
+    try:
+        days = int(days_value)
+    except (TypeError, ValueError):
+        days = 30
+    days = max(1, min(days, 365))
 
     try:
-        bot.send_message(
-            msg.chat_id,
-            f"📈 XRP prices for the last {days} days:\n[Price API integration coming soon]",
-        )
-    except Exception as exc:
-        print(f"Error in prices command: {exc}")
-        bot.send_message(msg.chat_id, "❌ Could not fetch price data. Please try again later.")
+        history = fetch_price_history(symbol=symbol, start=start, end=end, days=days)
+    except CoinGeckoAPIError as exc:
+        print(f"Error fetching price history: {exc}")
+        bot.send_message(msg.chat_id, f"❌ Could not fetch price data: {exc}")
+        return
+
+    if history.status != "ok":
+        error_message = history.error or "Unknown error returned by CoinGecko."
+        print(f"Price history error: {error_message}")
+        bot.send_message(msg.chat_id, f"❌ Could not fetch price data: {error_message}")
+        return
+
+    bot.send_message(msg.chat_id, _format_price_history_message(history))
 
 
 @shared_task(queue="telegram_bot")

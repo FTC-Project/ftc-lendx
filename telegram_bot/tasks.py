@@ -43,7 +43,11 @@ def _parse_iso_date(value: Optional[str]) -> Optional[date]:
 def _format_currency(currency: str, value: Optional[float]) -> str:
     if value is None:
         return f"{currency.upper()}: --"
-    prefix = "$" if currency == "usd" else "R" if currency == "zar" else ""
+    currency_prefixes = {
+        "usd": "$",
+        "zar": "R",
+    }
+    prefix = currency_prefixes.get(currency, "")
     return f"{currency.upper()}: {prefix}{value:,.4f}"
 
 

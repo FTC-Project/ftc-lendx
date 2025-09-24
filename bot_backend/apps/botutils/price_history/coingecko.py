@@ -1,172 +1,238 @@
-# price_history/coingecko.py
+"""Utilities for fetching XRP price history data from CoinGecko."""
+
 from __future__ import annotations
 
-import asyncio
 import os
 from dataclasses import dataclass
-from datetime import datetime, timezone
-from typing import Any, Iterable, List, Tuple
+from datetime import date, datetime, time, timedelta, timezone
+from typing import Dict, Iterable, List, Optional, Tuple
 
-import httpx
+import requests
 
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
-ENV_KEY_NAME = "COINGECKO_API_KEY"
-DEFAULT_TIMEOUT_SECS = 5.0 
-DEFAULT_MAX_RETRIES = 3
-RETRY_STATUS = {429, 500, 502, 503, 504}  # backoff-worthy statuses
-MAX_RANGE_YEARS = 5 
-XRP_CG_ID = "ripple"  # CoinGecko's id for XRP
-DEFAULT_VS_CURRENCY = "zar" 
+API_KEY_ENV = "COINGECKO_API_KEY"
+DEFAULT_COIN_SYMBOL = "xrp"
+DEFAULT_COIN_ID = "ripple"
+SUPPORTED_CURRENCIES: Tuple[str, ...] = ("usd", "zar")
+REQUEST_TIMEOUT = 10
+MAX_DAYS = 365
+
+
+class CoinGeckoAPIError(RuntimeError):
+    """Raised when the CoinGecko API returns an error."""
 
 
 @dataclass
-class CoinGeckoError(Exception):
-    status_code: int
-    error: str
-    detail: Any | None = None
+class PricePoint:
+    """Normalised price point for a single day."""
 
-    def error_display(self) -> str:
-        base = f"CoinGecko API error (status {self.status_code}): {self.error}"
-        if self.detail:
-            base += f" | detail={self.detail}"
-        return base
+    date: date
+    values: Dict[str, Optional[float]]
 
 
-def timezone_required(dt: datetime, name: str) -> None:
-    if dt.tzinfo is None or dt.utcoffset() is None:
-        raise ValueError(f"{name} must be timezone-aware (e.g., UTC).")
+@dataclass
+class PriceHistory:
+    """Structured representation of price history data."""
+
+    status: str
+    error: Optional[str]
+    coin_symbol: str
+    coin_id: str
+    start: date
+    end: date
+    prices: List[PricePoint]
+    percent_change: Dict[str, Optional[float]]
+    warnings: Dict[str, str]
 
 
-def validate_range(from_dt: datetime, to_dt: datetime) -> None:
-    if to_dt <= from_dt:
-        raise ValueError("to_dt must be strictly greater than from_dt.")
-    # Limit range to ≤ 5 years (~ 5 * 366 days to be safe)
-    max_seconds = 5 * 366 * 24 * 60 * 60
-    if (to_dt - from_dt).total_seconds() > max_seconds:
-        raise ValueError("Requested range must be ≤ 5 years.")
-
-
-def unix(dt: datetime) -> int:
-    # CoinGecko expects seconds (not ms) since epoch
-    return int(dt.timestamp())
-
-
-def get_cg_key() -> dict[str, str]:
-    api_key = os.getenv(ENV_KEY_NAME)
+def _get_headers() -> Dict[str, str]:
+    api_key = os.getenv(API_KEY_ENV)
     if not api_key:
-        # You can choose to allow no key (public tier) by returning {}, but the brief asks for a key.
-        raise EnvironmentError(
-            f"{ENV_KEY_NAME} not set. Please export an API key or use .env."
-        )
-    return {"x-cg-pro-api-key": api_key}
+        raise CoinGeckoAPIError("CoinGecko API key not configured.")
+    return {"x-cg-demo-api-key": api_key}
 
 
-async def get_http(
-    client: httpx.AsyncClient, url: str, params: dict[str, Any]
-) -> httpx.Response:
-    delay = 0.5
-    for attempt in range(1, DEFAULT_MAX_RETRIES + 1):
+def _request(url: str, params: Dict[str, object]) -> Dict[str, object]:
+    response = requests.get(url, params=params, headers=_get_headers(), timeout=REQUEST_TIMEOUT)
+    if response.status_code != 200:
         try:
-            resp = await client.get(url, params=params)
-            if resp.status_code in RETRY_STATUS:
-                # Try to parse error for context, then backoff
-                if attempt < DEFAULT_MAX_RETRIES:
-                    await asyncio.sleep(delay)
-                    delay *= 2
-                    continue
-            return resp
-        except (httpx.ConnectError, httpx.ReadTimeout, httpx.RemoteProtocolError) as e:
-            if attempt < DEFAULT_MAX_RETRIES:
-                await asyncio.sleep(delay)
-                delay *= 2
-                continue
-            # Surface the last network error
-            raise httpx.HTTPError(f"Network error after {attempt} attempts: {e}") from e
-    # Should not be reachable
-    raise RuntimeError("Exhausted retries unexpectedly.")
-
-
-async def fetch_price_hist_async(
-    from_dt: datetime,
-    to_dt: datetime,
-    *,
-    vs_currency: str = DEFAULT_VS_CURRENCY,
-    coin_id: str = XRP_CG_ID,
-    timeout_secs: float = DEFAULT_TIMEOUT_SECS,
-) -> List[Tuple[datetime, float]]:
-    
-    timezone_required(from_dt, "from_dt")
-    timezone_required(to_dt, "to_dt")
-    validate_range(from_dt, to_dt)
-
-    f = unix(from_dt)
-    t = unix(to_dt)
-
-    url = f"{COINGECKO_BASE_URL}/coins/{coin_id}/market_chart/range"
-    params = {"vs_currency": vs_currency, "from": f, "to": t}
-    headers = get_cg_key()
-
-    async with httpx.AsyncClient(
-        headers=headers, timeout=timeout_secs
-    ) as client:
-        resp = await get_http(client, url, params)
-        if resp.status_code != 200:
-            # Try to surface JSON error payload, else text
-            try:
-                data = resp.json()
-            except ValueError:
-                data = {"error": resp.text}
-            error_msg = data.get("error") or data
-            raise CoinGeckoError(resp.status_code, str(error_msg), detail=data)
-
-        data = resp.json()
-        # CoinGecko returns: {"prices": [[<ms>, <price>], ...], "market_caps": ..., "total_volumes": ...}
-        raw_prices: Iterable[Iterable[float]] = data.get("prices", [])
-        result: List[Tuple[datetime, float]] = []
-        for pair in raw_prices:
-            # Defensive parsing
-            if not isinstance(pair, (list, tuple)) or len(pair) != 2:
-                continue
-            ts_ms, price = pair
-            # Convert ms -> seconds, return tz-aware UTC datetime
-            ts = datetime.fromtimestamp(ts_ms / 1000.0, tz=timezone.utc)
-            try:
-                price_val = float(price)
-            except (TypeError, ValueError):
-                continue
-            result.append((ts, price_val))
-        return result
-
-
-def get_price_hist_sync(
-    from_dt: datetime,
-    to_dt: datetime,
-    *,
-    vs_currency: str = DEFAULT_VS_CURRENCY,
-    coin_id: str = XRP_CG_ID,
-    timeout_secs: float = DEFAULT_TIMEOUT_SECS,
-) -> List[Tuple[datetime, float]]:
-
-
+            payload = response.json()
+        except ValueError:
+            payload = {"error": response.text}
+        message = payload.get("error") or payload
+        raise CoinGeckoAPIError(f"CoinGecko returned {response.status_code}: {message}")
     try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        loop = None
+        return response.json()
+    except ValueError as exc:
+        raise CoinGeckoAPIError("Invalid JSON received from CoinGecko.") from exc
 
-    if loop and loop.is_running():
-        # Avoid nested event loops; in async contexts, the caller should await the async fn.
-        # Provide a clear error to guide correct usage.
-        raise RuntimeError(
-            "get_price_hist_sync called from within an active event loop. "
-            "Use `await fetch_price_hist_async(...)` in async code."
+
+def _parse_market_chart(data: Dict[str, object]) -> Iterable[Tuple[datetime, float]]:
+    prices = data.get("prices", [])
+    for entry in prices:
+        if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+            continue
+        timestamp_ms, price = entry
+        try:
+            dt = datetime.fromtimestamp(float(timestamp_ms) / 1000, tz=timezone.utc)
+            value = float(price)
+        except (TypeError, ValueError):
+            continue
+        yield dt, value
+
+
+def _normalise_daily(prices: Iterable[Tuple[datetime, float]]) -> Dict[date, float]:
+    daily: Dict[date, float] = {}
+    for dt, value in sorted(prices):
+        daily[dt.date()] = value  # keep the last value of the day
+    return daily
+
+
+def _resolve_coin_id(symbol: str) -> Tuple[str, str]:
+    symbol_clean = symbol.strip().lower()
+    if not symbol_clean:
+        raise CoinGeckoAPIError("Coin symbol cannot be empty.")
+    if symbol_clean == DEFAULT_COIN_SYMBOL:
+        return DEFAULT_COIN_SYMBOL, DEFAULT_COIN_ID
+
+    search_url = f"{COINGECKO_BASE_URL}/search"
+    payload = _request(search_url, {"query": symbol_clean})
+    coins = payload.get("coins") or []
+    for coin in coins:
+        coin_symbol = (coin.get("symbol") or "").lower()
+        if coin_symbol == symbol_clean:
+            coin_id = coin.get("id")
+            if coin_id:
+                return symbol_clean, coin_id
+    raise CoinGeckoAPIError(f"Unable to find CoinGecko id for symbol '{symbol}'.")
+
+
+def _date_to_datetime(value: date, *, inclusive_end: bool = False) -> datetime:
+    dt = datetime.combine(value, time.min, tzinfo=timezone.utc)
+    if inclusive_end:
+        dt += timedelta(days=1)
+    return dt
+
+
+def _fetch_prices_for_currency(
+    coin_id: str,
+    currency: str,
+    *,
+    start: Optional[date] = None,
+    end: Optional[date] = None,
+    days: Optional[int] = None,
+) -> Dict[date, float]:
+    if start and end:
+        url = f"{COINGECKO_BASE_URL}/coins/{coin_id}/market_chart/range"
+        params: Dict[str, object] = {
+            "vs_currency": currency,
+            "from": int(_date_to_datetime(start).timestamp()),
+            "to": int(_date_to_datetime(end, inclusive_end=True).timestamp()),
+        }
+    else:
+        url = f"{COINGECKO_BASE_URL}/coins/{coin_id}/market_chart"
+        params = {
+            "vs_currency": currency,
+            "days": max(1, min(days or 1, MAX_DAYS)),
+        }
+
+    payload = _request(url, params)
+    return _normalise_daily(_parse_market_chart(payload))
+
+
+def fetch_price_history(
+    *,
+    symbol: str = DEFAULT_COIN_SYMBOL,
+    start: Optional[date] = None,
+    end: Optional[date] = None,
+    days: int = 30,
+) -> PriceHistory:
+    if start and end and start > end:
+        raise CoinGeckoAPIError("Start date must be on or before the end date.")
+
+    days = max(1, min(days, MAX_DAYS))
+    coin_symbol, coin_id = _resolve_coin_id(symbol)
+    effective_start = start or (date.today() - timedelta(days=days))
+    effective_end = end or date.today()
+
+    usd_prices: Dict[date, float] = {}
+    zar_prices: Dict[date, float] = {}
+
+    errors: Dict[str, str] = {}
+    for currency in SUPPORTED_CURRENCIES:
+        try:
+            history = _fetch_prices_for_currency(
+                coin_id,
+                currency,
+                start=start,
+                end=end,
+                days=days,
+            )
+        except CoinGeckoAPIError as exc:
+            errors[currency] = str(exc)
+            history = {}
+        if currency == "usd":
+            usd_prices = history
+        elif currency == "zar":
+            zar_prices = history
+
+    all_dates = sorted(set(usd_prices.keys()) | set(zar_prices.keys()))
+    price_points: List[PricePoint] = []
+    for day in all_dates:
+        price_points.append(
+            PricePoint(
+                date=day,
+                values={
+                    "usd": usd_prices.get(day),
+                    "zar": zar_prices.get(day),
+                },
+            )
         )
 
-    return asyncio.run(
-        fetch_price_hist_async(
-            from_dt,
-            to_dt,
-            vs_currency=vs_currency,
+    def _percent_change(values: Dict[date, float]) -> Optional[float]:
+        if len(values) < 2:
+            return None
+        sorted_items = sorted(values.items())
+        first = sorted_items[0][1]
+        last = sorted_items[-1][1]
+        if first in (None, 0):
+            return None
+        return ((last - first) / first) * 100
+
+    change = {
+        "usd": _percent_change(usd_prices),
+        "zar": _percent_change(zar_prices),
+    }
+
+    if price_points:
+        data_start = price_points[0].date
+        data_end = price_points[-1].date
+    else:
+        data_start = effective_start
+        data_end = effective_end
+
+    if errors and not price_points:
+        message = "; ".join(f"{cur.upper()}: {msg}" for cur, msg in errors.items())
+        return PriceHistory(
+            status="error",
+            error=message,
+            coin_symbol=coin_symbol,
             coin_id=coin_id,
-            timeout_secs=timeout_secs,
+            start=data_start,
+            end=data_end,
+            prices=[],
+            percent_change=change,
+            warnings=errors,
         )
+
+    return PriceHistory(
+        status="ok",
+        error=None,
+        coin_symbol=coin_symbol,
+        coin_id=coin_id,
+        start=data_start,
+        end=data_end,
+        prices=price_points,
+        percent_change=change,
+        warnings=errors,
     )

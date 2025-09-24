@@ -10,7 +10,7 @@ from typing import Dict, Iterable, List, Optional, Tuple
 import requests
 
 COINGECKO_BASE_URL = "https://api.coingecko.com/api/v3"
-API_KEY_ENV = "COINGECKO_API_KEY"
+COINGECKO_API_KEY = os.getenv("COINGECKO_API_KEY", "").strip()
 DEFAULT_COIN_SYMBOL = "xrp"
 DEFAULT_COIN_ID = "ripple"
 SUPPORTED_CURRENCIES: Tuple[str, ...] = ("usd", "zar")
@@ -46,10 +46,9 @@ class PriceHistory:
 
 
 def _get_headers() -> Dict[str, str]:
-    api_key = os.getenv(API_KEY_ENV)
-    if not api_key:
-        raise CoinGeckoAPIError("CoinGecko API key not configured.")
-    return {"x-cg-demo-api-key": api_key}
+    if not COINGECKO_API_KEY:
+        raise CoinGeckoAPIError("CoinGecko API key is not configured.")
+    return {"x-cg-demo-api-key": COINGECKO_API_KEY}
 
 
 def _request(url: str, params: Dict[str, object]) -> Dict[str, object]:

@@ -21,6 +21,10 @@ COPY requirements/prod.txt /tmp/requirements.txt
 RUN pip install --upgrade pip \
  && pip install --no-cache-dir -r /tmp/requirements.txt
 
+
+ # Pre-create staticfiles dir and make it writable
+RUN mkdir -p /app/staticfiles && chmod 777 /app/staticfiles
+
 # ---- copy code and set ownership for runtime user ----
 COPY --chown=app:app . /app
 

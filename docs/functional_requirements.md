@@ -69,8 +69,7 @@ The **XRP Telegram Bot** is a custodial crypto asset manager that integrates wit
   and communicate rate limiting to users.
 
 - **FR-7: Standard Telegram Commands**  
-  Support `/start`, `/help`, `/settings`, and `/cancel`.  
-  All commands must be case-insensitive and support auto-complete.
+  Support `/start`, `/help` , `/settings`, and `/cancel` commands for standard bot interactions.
 
 #### XRPL Account Management
 

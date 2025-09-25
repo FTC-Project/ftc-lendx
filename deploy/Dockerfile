@@ -24,8 +24,6 @@ RUN pip install --upgrade pip \
 # ---- copy code and set ownership for runtime user ----
 COPY --chown=app:app . /app
 
-RUN python manage.py collectstatic --noinput || true
-
 # Drop privileges for runtime
 USER app
 

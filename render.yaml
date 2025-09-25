@@ -13,13 +13,7 @@ services:
     name: fse-xrpl-web
     env: docker
     dockerfilePath: deploy/Dockerfile
-    dockerCommand: bash /app/scripts/entrypoint.sh
     healthCheckPath: /
-    postDeployCommand: |
-      python manage.py migrate --noinput
-      python manage.py collectstatic --noinput
-      python manage.py create_dummy_user
-      python manage.py set_webhook
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: bot_backend.settings.base
@@ -51,6 +45,8 @@ services:
         sync: false
       - key: WEB_CONCURRENCY
         value: "4"
+      - key: CREATE_DUMMY_USER
+        value: "true"
 
   - type: worker
     name: fse-xrpl-celery

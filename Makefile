@@ -1,4 +1,4 @@
-.PHONY: up down build logs manage migrate makemigrations createsuperuser shell setwebhook createdummyuser worker
+.PHONY: up down build logs manage migrate makemigrations createsuperuser shell setwebhook createdummyuser worker collectstatic
 
 # Start services
 up:
@@ -43,3 +43,6 @@ createdummyuser:
 # Run the Celery worker manually
 worker:
 	docker compose -f compose/docker-compose.dev.yml run --rm celery_worker
+
+collectstatic:
+	docker compose -f compose/docker-compose.dev.yml exec web python manage.py collectstatic --noinput

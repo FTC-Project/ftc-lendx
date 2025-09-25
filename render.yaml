@@ -14,7 +14,7 @@ services:
     name: fse-xrpl-web
     runtime: docker
     dockerfilePath: deploy/Dockerfile
-    healthCheckPath: /
+    healthCheckPath: /healthz
     envVars:
       - key: DJANGO_SETTINGS_MODULE
         value: bot_backend.settings.base

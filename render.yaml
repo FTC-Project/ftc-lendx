@@ -1,17 +1,18 @@
 databases:
   - name: fse-xrpl-postgres
     databaseName: fse_db
-    plan: starter
+    plan: free
     ipAllowList: []  # keep private networking only
 
 services:
   - type: redis
     name: fse-xrpl-redis
-    plan: starter
+    plan: free
+    ipAllowList: []  # keep private networking only
 
   - type: web
     name: fse-xrpl-web
-    env: docker
+    runtime: docker
     dockerfilePath: deploy/Dockerfile
     healthCheckPath: /
     envVars:
@@ -19,14 +20,17 @@ services:
         value: bot_backend.settings.base
       - key: DATABASE_URL
         fromDatabase:
+          type: postgresql
           name: fse-xrpl-postgres
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
+          type: redis
           name: fse-xrpl-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
+          type: redis
           name: fse-xrpl-redis
           property: connectionString
       - key: ALLOWED_HOSTS
@@ -50,7 +54,7 @@ services:
 
   - type: worker
     name: fse-xrpl-celery
-    env: docker
+    runtime: docker
     dockerfilePath: deploy/Dockerfile
     dockerCommand: celery -A bot_backend worker -l info --concurrency=2 --queues=telegram_bot
     envVars:
@@ -62,10 +66,12 @@ services:
           property: connectionString
       - key: CELERY_BROKER_URL
         fromService:
+          type: redis
           name: fse-xrpl-redis
           property: connectionString
       - key: CELERY_RESULT_BACKEND
         fromService:
+          type: redis
           name: fse-xrpl-redis
           property: connectionString
       - key: DJANGO_SECRET_KEY

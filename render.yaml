@@ -1,0 +1,84 @@
+databases:
+  - name: fse-xrpl-postgres
+    databaseName: fse_db
+    plan: starter
+    ipAllowList: []  # keep private networking only
+
+services:
+  - type: redis
+    name: fse-xrpl-redis
+    plan: starter
+
+  - type: web
+    name: fse-xrpl-web
+    env: docker
+    dockerfilePath: deploy/Dockerfile
+    dockerCommand: bash /app/scripts/entrypoint.sh
+    healthCheckPath: /
+    postDeployCommand: |
+      python manage.py migrate --noinput
+      python manage.py collectstatic --noinput
+      python manage.py create_dummy_user
+      python manage.py set_webhook
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: bot_backend.settings.base
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fse-xrpl-postgres
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: fse-xrpl-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: fse-xrpl-redis
+          property: connectionString
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com"
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: FERNET_KEY
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: PUBLIC_URL
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "4"
+
+  - type: worker
+    name: fse-xrpl-celery
+    env: docker
+    dockerfilePath: deploy/Dockerfile
+    dockerCommand: celery -A bot_backend worker -l info --concurrency=2 --queues=telegram_bot
+    envVars:
+      - key: DJANGO_SETTINGS_MODULE
+        value: bot_backend.settings.base
+      - key: DATABASE_URL
+        fromDatabase:
+          name: fse-xrpl-postgres
+          property: connectionString
+      - key: CELERY_BROKER_URL
+        fromService:
+          name: fse-xrpl-redis
+          property: connectionString
+      - key: CELERY_RESULT_BACKEND
+        fromService:
+          name: fse-xrpl-redis
+          property: connectionString
+      - key: DJANGO_SECRET_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: FERNET_KEY
+        sync: false
+      - key: COINGECKO_API_KEY
+        sync: false
+      - key: PUBLIC_URL
+        sync: false

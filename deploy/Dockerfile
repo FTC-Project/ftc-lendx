@@ -1,16 +1,33 @@
+# deploy/Dockerfile
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends build-essential libpq-dev \
+# ---- system deps (root) ----
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends build-essential libpq-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements/prod.txt /tmp/requirements.txt
-RUN pip install --upgrade pip && pip install -r /tmp/requirements.txt
+# ---- create non-root runtime user ----
+# (system user 'app' in group 'app')
+RUN addgroup --system app && adduser --system --ingroup app app
 
-COPY . /app
-RUN chmod +x scripts/entrypoint.sh
-CMD ["bash", "scripts/entrypoint.sh"]
+WORKDIR /app
+
+# ---- install deps (still root) ----
+COPY requirements/prod.txt /tmp/requirements.txt
+RUN pip install --upgrade pip \
+ && pip install --no-cache-dir -r /tmp/requirements.txt
+
+# ---- copy code and set ownership for runtime user ----
+COPY --chown=app:app . /app
+
+RUN python manage.py collectstatic --noinput || true
+
+# Drop privileges for runtime
+USER app
+
+# In case the repo bind-mount removes +x, we invoke via bash (no +x needed)
+CMD ["bash", "/app/scripts/entrypoint.sh"]

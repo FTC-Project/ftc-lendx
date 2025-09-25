@@ -32,3 +32,4 @@ websockets==15.0.1
 wrapt==1.17.3
 xrpl-py==4.3.0
 celery[redis]==5.4.0
+whitenoise==6.6.0

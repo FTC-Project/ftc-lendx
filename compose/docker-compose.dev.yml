@@ -1,3 +1,4 @@
+# compose/docker-compose.dev.yml
 services:
   web:
     build:
@@ -7,13 +8,20 @@ services:
     env_file:
       - ../.env
       - ./env/dev.db.env
+    environment:
+      # Ensure Django hits the containerized DB
+      DB_HOST: db
+      DB_PORT: "5432"
+      DJANGO_SETTINGS_MODULE: bot_backend.settings.base
     ports:
       - "8000:8000"
     volumes:
       - ../:/app
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   celery_worker:
     build:
@@ -24,11 +32,19 @@ services:
     env_file:
       - ../.env
       - ./env/dev.db.env
+    environment:
+      # Ensure Celery reaches Redis & DB (Django reads these in settings)
+      DB_HOST: db
+      DB_PORT: "5432"
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes:
       - ../:/app
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   db:
     image: postgres:16
@@ -38,6 +54,12 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Escape $ with $$ for docker-compose to pass through env vars
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1 -p 5432"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   redis:
     image: redis:7-alpine

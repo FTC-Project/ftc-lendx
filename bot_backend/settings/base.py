@@ -5,18 +5,27 @@ load_dotenv()  # Load .env file if present
 
 BASE_DIR = Path(__file__).resolve().parents[2]
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "dev-insecure-key")
-DEBUG = False
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in {"1", "true", "yes"}
+raw_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1")
+ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+
+
+raw_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")
+CSRF_TRUSTED_ORIGINS = [o.strip() for o in raw_csrf.split(",") if o.strip()]
+
+
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
     "rest_framework",
-    "bot_backend.apps.users", "bot_backend.apps.botutils"
+    "bot_backend.apps.users", "bot_backend.apps.botutils", "whitenoise.runserver_nostatic"
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -51,6 +60,23 @@ DATABASES = {
     }
 }
 
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+if DATABASE_URL:
+    from urllib.parse import urlparse
+    parsed = urlparse(DATABASE_URL)
+    DATABASES["default"].update(
+        {
+            "NAME": parsed.path.lstrip("/"),
+            "USER": parsed.username,
+            "PASSWORD": parsed.password,
+            "HOST": parsed.hostname,
+            "PORT": parsed.port or "5432",
+            "OPTIONS": {"sslmode": os.getenv("DB_SSLMODE", "require")},
+        }
+    )
+
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "Africa/Johannesburg"
 USE_I18N = True
@@ -72,3 +98,5 @@ CELERY_RESULT_BACKEND = os.getenv("CELERY_RESULT_BACKEND", CELERY_BROKER_URL)
 CELERY_TASK_DEFAULT_QUEUE = os.getenv("CELERY_TASK_DEFAULT_QUEUE", "telegram_bot")
 CELERY_TASK_ACKS_LATE = True
 CELERY_TASK_TIME_LIMIT = int(os.getenv("CELERY_TASK_TIME_LIMIT", "60"))
+
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True

@@ -1,6 +1,6 @@
 # Technical Specification Document for FSE Project ECO5040S, 2025
 
-**Authors:** Marc Levin (LVNMAR013) \
+**Authors:** Marc Levin (LVNMAR013) \ Nolwazi Hlophe (HLPNOL001) \
 **Date:** 25 September 2025
 
 ---

@@ -1,7 +1,12 @@
 # Technical Specification Document for FSE Project ECO5040S, 2025
 
-**Authors:** Marc Levin (LVNMAR013) \ Nolwazi Hlophe (HLPNOL001) \
-**Date:** 25 September 2025
+**Authors:**  
+- Marc Levin (LVNMAR013)  
+- Nolwazi Hlophe (HLPNOL001)  
+- Joshua Dove (DVXJOS002)  
+- Oshai Naidoo (NDXOSH003)
+
+**Date:** 26 September 2025
 
 ---
 
@@ -175,7 +180,81 @@ The **XRP Telegram Bot** is a custodial crypto asset manager that integrates wit
   database sharding, and optional CDN for global performance.
 
 
+
 ## UI Mockups
+
+### Start
+```
+👤 User: /start
+🤖 Bot:
+🚀 Welcome to XRPL Bot, Marc!
+
+I'll help you manage XRP on the XRPL TestNet.
+
+We created your account. You can use /help to see available commands.
+```
+
+### Help
+```
+👤 User: /help
+🤖 Bot:
+📋 Available Commands:
+
+/start - Get started with the bot
+/balance - Check your XRP balance
+/send @username amount - Send XRP to another user
+/prices [symbol] [days] - Get price history (default: XRP, 30 days)
+/prices [symbol] [start] [end] - Use a custom range (YYYY-MM-DD)
+/wallet - Create a new XRPL wallet
+/help - Show this help message
+
+Example: /send @alice 10.5
+```
+
+### Balance
+```
+👤 User: /balance
+🤖 Bot:
+💰 Your balance: 123.45 XRP
+```
+### Send
+```
+👤 User: /send @alice 10.5
+🤖 Bot:
+⏳ Sending 10.5 XRP to @alice...
+✅ Sent 10.5 XRP to @alice!
+TX Hash: 1234ABCD5678...
+```
+### Prices
+```
+👤 User: /prices xrp 7
+🤖 Bot:
+📈 XRP price history
+Range: 2025-09-18 → 2025-09-25
+
+• 2025-09-18: USD: $0.5270 | ZAR: R9.8650
+• ...
+📊 Change: USD: +2.15% | ZAR: +2.34%
+```
+
+### Wallet
+```
+👤 User: /wallet
+🤖 Bot:
+🆕 Wallet created!
+Address: rEXAMPLE12345...
+You have been credited with some test XRP.
+Use /balance to check your balance.
+```
+
+### Error Handling
+
+Error handling is uniform across all commands:
+```
+👤 User: /send @bob 1000
+🤖 Bot:
+❌ Insufficient balance. Your current balance is 123.45 XRP.    
+```
 
 
 ### Start
@@ -317,17 +396,56 @@ The stack is designed for responsiveness and future growth:
 
 ## Architecture Diagrams
 
-*To be completed.*
+![Architecture Diagram](archi.png)
 
 
 ## Sequence Diagrams
 
-*To be completed.*
+### Send
+
+![Send Sequence Diagram](_send.png)
+
+### Wallet
+![Wallet Sequence Diagram](_wallet.png)
+
+### Prices
+![Prices Sequence Diagram](_prices.png)
 
 
 ## How It Works
 
-*To be completed.*
+The user interacts with the Telegram bot by sending a message on Telegram. This message will be a command such as `/start`, `/wallet`, `/balance`, `/send`, or `/prices`. The message is forwarded by Telegram to the Django backend via a webhook endpoint.
+The Django view acknowledges receipt immediately and places the request into a Celery task queue, ensuring that long running operations do not block the webhook, such as communication with the XRP Ledger or external APIs. Celery workers then handle the actual processing:
+
+- **/start**
+  - Verifies that a user record exists
+  - Replies with a welcome message
+
+- **/wallet**
+  - Creates and funds a new TestNet wallet using the `xrpl-py` library
+  - Stores the encrypted secret key in the database
+
+- **/balance**
+  - Retrieves and displays the user’s XRP balance from the ledger
+
+- **/send**
+  - Decrypts the sender’s key
+  - Signs and submits a payment transaction to the ledger
+  - Records the transfer in the database
+  - Replies with a transaction hash
+
+- **/prices**
+  - Queries the CoinGecko API to fetch historical XRP prices (ZAR by default)
+  - Returns a formatted summary
+
+- **/help**
+  - Returns a concise guide to available commands
+
+
+The system relies on three core models, `TelegramUser`, `Wallet`, and `Transfer`, to manage accounts, keys, and payments, ensuring that all interactions remain auditable.
+Security and reliability are built into the bot’s design. Because the project follows a custodial model, each user's wallet secret is encrypted at rest with a Fernet key. This is supplied via environment variables rather than stored in the codebase, which protects the private keys even if the database were accessed directly. Webhook communication is lightweight, with the actual processing delegated to Celery workers, thus preventing timeouts and duplicate retries from Telegram. External API calls, such as those to CoinGecko, are safeguarded with strict five second timeouts, limited retries, and clear error handling so users always receive timely and understandable feedback. XRPL transactions are only marked successful once they are validated on the TestNet ledger, guaranteeing consistency in balances and transfers.
+
+Together, these measures ensure that the bot remains responsive and robust, even when external services are slow, while providing a secure environment for custodial wallet management.
 
 ## Evaluation
 

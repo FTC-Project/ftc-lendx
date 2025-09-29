@@ -175,6 +175,26 @@ def balance_command_task(message_data: Dict[str, Any]) -> None:
             return
 
         bot.send_message(msg.chat_id, f"💰 Your balance: {balance} XRP")
+
+        # Send transaction history (last 5)
+        recent_transfers = Transfer.objects.filter(
+            sender=user,
+        ).order_by("-created_at")[:5]
+        if recent_transfers:
+            history_lines = ["\n📝 Recent Transactions:"]
+            for transfer in recent_transfers:
+                status_emoji = {
+                    "pending": "⏳",
+                    "validated": "✅",
+                    "failed": "❌",
+                }.get(transfer.status, "")
+                amount_xrp = transfer.amount_drops / 1_000_000
+                recipient = f"@{transfer.recipient.username}" if transfer.recipient.username else "Unknown"
+                tx_line = f"{status_emoji} Sent {amount_xrp} XRP to {recipient}"
+                if transfer.tx_hash:
+                    tx_line += f" (TX: {transfer.tx_hash})"
+                history_lines.append(tx_line)
+            bot.send_message(msg.chat_id, "\n".join(history_lines))
         print(f"Balance response sent for user {msg.user_id}")
     except Exception as exc:
         print(f"Error in balance command: {exc}")

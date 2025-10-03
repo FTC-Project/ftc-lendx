@@ -17,7 +17,7 @@ RUN addgroup --system app && adduser --system --ingroup app app
 WORKDIR /app
 
 # ---- install deps (still root) ----
-COPY requirements/prod.txt /tmp/requirements.txt
+COPY requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip \
  && pip install --no-cache-dir -r /tmp/requirements.txt
 

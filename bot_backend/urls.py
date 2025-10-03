@@ -1,6 +1,6 @@
 from django.contrib import admin
 from django.urls import path
-from telegram_bot.webhook import telegram_webhook
+from bot_backend.apps.telegram_bot.webhook import telegram_webhook
 
 
 def health_check(request):

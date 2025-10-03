@@ -32,4 +32,4 @@ COPY --chown=app:app . /app
 USER app
 
 # In case the repo bind-mount removes +x, we invoke via bash (no +x needed)
-CMD ["bash", "/app/scripts/entrypoint.sh"]
+CMD ["bash", "/app/scripts/entrypoint.dev.sh"]

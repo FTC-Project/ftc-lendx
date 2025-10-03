@@ -8,7 +8,8 @@ class BaseCommand(ABC):
         self.name = name
         self.description = description
 
-    # abstract handle method
+    # This function does validation on the message before enqueueing.
+    @abstractmethod
     def handle(self, message: TelegramMessage) -> None:
         raise NotImplementedError("Handle method must be implemented by sub-classes")
 
@@ -16,8 +17,8 @@ class BaseCommand(ABC):
     def serialize(message: TelegramMessage) -> Dict[str, Any]:
         return message.to_payload()
 
-    @shared_task(queue="telegram_bot")
+    @abstractmethod
     def task(self, message_data: dict) -> None:
         raise NotImplementedError("Task method must be implemented by sub-classes")
-
+    
 

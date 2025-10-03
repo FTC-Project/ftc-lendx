@@ -1,22 +1,30 @@
+from celery import shared_task
 from bot_backend.apps.telegram_bot.commands.base import BaseCommand
+from bot_backend.apps.telegram_bot.messages import TelegramMessage
+from bot_backend.apps.telegram_bot.tasks import send_telegram_message_task
+
 
 
 class HelpCommand(BaseCommand):
     def __init__(self):
         super().__init__(name="help", description="Show help information")
 
-    def handle(self, message) -> None:
+    def handle(self, message: TelegramMessage) -> None:
         help_text = (
-            "Available commands:\n"
-            "/start - Start interaction with the bot\n"
-            "/help - Show this help message\n"
-            "/status - Get current status\n"
-            "/settings - Configure your settings\n"
-        )
-        # Here you would send the help_text back to the user via Telegram API
-        print(f"Sending help message to chat_id {message.chat_id}:\n{help_text}")
+        "📋 Available Commands:\n\n"
+        "/start - Get started with the bot\n"
+        "/balance - Check your XRP balance\n"
+        "/send @username amount - Send XRP to another user\n"
+        "/prices [symbol] [days] - Get price history (default: XRP, 30 days)\n"
+        "/prices [symbol] [start] [end] - Use a custom range (YYYY-MM-DD)\n"
+        "/wallet - Create a new XRPL wallet\n"
+        "/help - Show this help message\n\n"
+        "Example: /send @alice 10.5"
+    )
+        send_telegram_message_task.delay(message.chat_id, help_text)
+        
 
-    @staticmethod
+    @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
-        # This would be the Celery task implementation
-        print(f"Processing help command for message data: {message_data}")
+        # Help doesn't need to use a worker since it's a flat response.
+        pass

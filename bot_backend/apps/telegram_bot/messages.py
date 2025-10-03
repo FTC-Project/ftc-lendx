@@ -22,6 +22,13 @@ class TelegramMessage:
 
     def to_payload(self) -> Dict[str, Any]:
         return asdict(self)
+    
+    # function to go from payload to TelegramMessage
+    def from_payload(data: Dict[str, Any]) -> Optional['TelegramMessage']:
+        try:
+            return TelegramMessage(**data)
+        except TypeError:
+            return None
 
 
 def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:

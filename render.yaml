@@ -17,7 +17,7 @@ services:
     healthCheckPath: /healthz
     envVars:
       - key: DJANGO_SETTINGS_MODULE
-        value: bot_backend.settings.base
+        value: backend.settings.base
       - key: DATABASE_URL
         fromDatabase:
           type: postgresql
@@ -56,10 +56,10 @@ services:
     name: fse-xrpl-celery
     runtime: docker
     dockerfilePath: deploy/Dockerfile
-    dockerCommand: celery -A bot_backend worker -l info --concurrency=2 --queues=telegram_bot
+    dockerCommand: celery -A backend worker -l info --concurrency=2 --queues=telegram_bot
     envVars:
       - key: DJANGO_SETTINGS_MODULE
-        value: bot_backend.settings.base
+        value: backend.settings.base
       - key: DATABASE_URL
         fromDatabase:
           name: fse-xrpl-postgres

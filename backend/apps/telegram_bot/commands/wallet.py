@@ -1,10 +1,10 @@
 from celery import shared_task
-from bot_backend.apps.telegram_bot.commands.base import BaseCommand
-from bot_backend.apps.telegram_bot.messages import TelegramMessage
-from bot_backend.apps.telegram_bot.tasks import send_telegram_message_task
-from bot_backend.apps.users.crypto import encrypt_secret
-from bot_backend.apps.users.models import TelegramUser, Wallet
-from bot_backend.apps.users.xrpl_service import create_user_wallet
+from backend.apps.telegram_bot.commands.base import BaseCommand
+from backend.apps.telegram_bot.messages import TelegramMessage
+from backend.apps.telegram_bot.tasks import send_telegram_message_task
+from backend.apps.users.crypto import encrypt_secret
+from backend.apps.users.models import TelegramUser, Wallet
+from backend.apps.users.xrpl_service import create_user_wallet
 
 
 

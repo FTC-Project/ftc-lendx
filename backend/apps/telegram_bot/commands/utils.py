@@ -1,4 +1,4 @@
-from bot_backend.apps.users.models import TelegramUser
+from backend.apps.users.models import TelegramUser
 
 
 def user_exists(telegram_id: int) -> bool:

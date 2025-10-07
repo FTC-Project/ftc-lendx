@@ -3,13 +3,13 @@ from typing import Dict, Optional
 
 import requests
 
-from bot_backend.apps.telegram_bot.commands.base import BaseCommand
-from bot_backend.apps.telegram_bot.commands.balance import BalanceCommand
-from bot_backend.apps.telegram_bot.commands.help import HelpCommand
-from bot_backend.apps.telegram_bot.commands.prices import PricesCommand
-from bot_backend.apps.telegram_bot.commands.send import SendCommand
-from bot_backend.apps.telegram_bot.commands.start import StartCommand
-from bot_backend.apps.telegram_bot.commands.wallet import WalletCommand
+from backend.apps.telegram_bot.commands.base import BaseCommand
+from backend.apps.telegram_bot.commands.balance import BalanceCommand
+from backend.apps.telegram_bot.commands.help import HelpCommand
+from backend.apps.telegram_bot.commands.prices import PricesCommand
+from backend.apps.telegram_bot.commands.send import SendCommand
+from backend.apps.telegram_bot.commands.start import StartCommand
+from backend.apps.telegram_bot.commands.wallet import WalletCommand
 
 from .messages import TelegramMessage
 

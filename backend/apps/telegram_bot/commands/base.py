@@ -1,4 +1,4 @@
-from bot_backend.apps.telegram_bot.messages import TelegramMessage
+from backend.apps.telegram_bot.messages import TelegramMessage
 from celery import shared_task
 from typing import Any, Dict
 from abc import ABC, abstractmethod

@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class UsersConfig(AppConfig):
+class BotutilsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
-    name = 'bot_backend.apps.users'
+    name = 'backend.apps.botutils'

@@ -1,7 +1,7 @@
 from celery import shared_task
-from bot_backend.apps.telegram_bot.commands.base import BaseCommand
-from bot_backend.apps.telegram_bot.messages import TelegramMessage
-from bot_backend.apps.telegram_bot.tasks import send_telegram_message_task
+from backend.apps.telegram_bot.commands.base import BaseCommand
+from backend.apps.telegram_bot.messages import TelegramMessage
+from backend.apps.telegram_bot.tasks import send_telegram_message_task
 
 
 

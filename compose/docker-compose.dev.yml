@@ -12,7 +12,7 @@ services:
       # Ensure Django hits the containerized DB
       DB_HOST: db
       DB_PORT: "5432"
-      DJANGO_SETTINGS_MODULE: bot_backend.settings.base
+      DJANGO_SETTINGS_MODULE: backend.settings.base
     ports:
       - "8000:8000"
     volumes:
@@ -28,7 +28,7 @@ services:
       context: ..
       dockerfile: deploy/Dockerfile
     image: fse-xrpl-bot:dev
-    command: celery -A bot_backend worker -l info --concurrency=4
+    command: celery -A backend worker -l info --concurrency=4
     env_file:
       - ../.env
       - ./env/dev.db.env

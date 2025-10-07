@@ -20,7 +20,7 @@ INSTALLED_APPS = [
     "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
     "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
     "rest_framework",
-    "bot_backend.apps.users", "bot_backend.apps.botutils", "whitenoise.runserver_nostatic"
+    "backend.apps.users", "backend.apps.botutils", "whitenoise.runserver_nostatic"
 ]
 
 MIDDLEWARE = [
@@ -34,7 +34,7 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-ROOT_URLCONF = "bot_backend.urls"
+ROOT_URLCONF = "backend.urls"
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
     "DIRS": [BASE_DIR / "templates"],
@@ -46,7 +46,7 @@ TEMPLATES = [{
         "django.contrib.messages.context_processors.messages",
     ]},
 }]
-WSGI_APPLICATION = "bot_backend.wsgi.application"
+WSGI_APPLICATION = "backend.wsgi.application"
 
 # Postgres by default; override with docker/dev settings as needed
 DATABASES = {

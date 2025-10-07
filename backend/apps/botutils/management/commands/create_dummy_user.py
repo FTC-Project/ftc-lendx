@@ -1,7 +1,7 @@
 import os
-from bot_backend.apps.users.models import TelegramUser, Wallet
-from bot_backend.apps.users.crypto import encrypt_secret
-from bot_backend.apps.users.xrpl_service import create_user_wallet
+from backend.apps.users.models import TelegramUser, Wallet
+from backend.apps.users.crypto import encrypt_secret
+from backend.apps.users.xrpl_service import create_user_wallet
 from django.core.management.base import BaseCommand, CommandError
 
 class Command(BaseCommand):

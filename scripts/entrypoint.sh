@@ -21,7 +21,7 @@ if [ "${CREATE_DUMMY_USER:-false}" = "true" ]; then
   python manage.py create_dummy_user || echo "[entrypoint] Failed to create dummy user (maybe exists)"
 fi
 
-exec uvicorn bot_backend.asgi:application \
+exec uvicorn backend.asgi:application \
   --host 0.0.0.0 \
   --port "${PORT:-8000}" \
   --workers "${WEB_CONCURRENCY:-4}" \

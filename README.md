@@ -28,7 +28,7 @@ Throughout the semester we will iterate on architecture, smart contract design, 
 
 ```
 ftc-lendx/
-├── bot_backend/        # Django project that currently houses core services
+├── backend/            # Django project that currently houses core services
 ├── compose/            # Docker Compose definitions for local environments
 ├── deploy/             # Container and server deployment assets
 ├── docs/               # Assignment brief, research notes, and specifications

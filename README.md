@@ -1,226 +1,139 @@
-# FSE XRPL Bot
+# LendX: Decentralised Micro-Lending Platform (FTC 2025)
 
-A Django-based backend application with Telegram bot integration for XRPL (XRP Ledger) functionality.
+Welcome to **LendX**, the foundation for our ECO5037S (FTC) class project. This repository will evolve into a proof-of-concept platform that explores how decentralised infrastructure and alternative data can unlock affordable credit for South Africans who are underserved by traditional credit systems.
 
-## 🏗️ Project Structure
+> **Project Vision:** Build an end-to-end lending experience that connects thin-file borrowers and community lenders through open banking data, a Python-based credit scoring engine, smart escrow contracts on the XRPL EVM sidechain, and user-friendly touchpoints such as a Telegram bot and web portal.
+
+---
+
+## 🧭 Project Roadmap
+
+The project brief highlights the following goals:
+
+1. **Data-Driven Creditworthiness**
+   - Collect user-permissioned banking data via an Absa-inspired Open Banking API.
+   - Generate alternative credit scores for thin-file clients using a transparent Python scoring engine.
+2. **Decentralised Lending Mechanics**
+   - Deploy smart contracts on the XRPL EVM sidechain to escrow funds, issue loans, manage repayments, and mint non-transferable **CreditTrust Tokens** that reflect repayment behaviour.
+   - Explore cross-chain bridges (Axelar, Squid Router) where relevant for liquidity routing.
+3. **User-Facing Experiences**
+   - **Telegram Bot:** Facilitate borrower and lender onboarding, loan requests, approvals, and repayment notifications.
+   - **Web Platform:** Surface smart contract activity, portfolio analytics, and provide a portal for technically savvy lenders to supply liquidity.
+
+Throughout the semester we will iterate on architecture, smart contract design, UI flows, and operational processes. Expect substantial changes as we validate assumptions and integrate feedback from the product and management teams.
+
+---
+
+## 📁 Repository Overview
 
 ```
-fse-xrpl-bot/
-├── bot_backend/           # Django backend application
-│   ├── apps/             # Django apps (e.g. users/)
-│   ├── settings/         # Django settings (base, dev, prod, docker)
-│   └── ...
-├── telegram_bot/         # Telegram bot implementation
-├── compose/              # Docker Compose configurations
-├── deploy/               # Deployment files (Dockerfile, nginx, gunicorn)
-├── requirements/         # Python dependencies
-│   ├── base.txt
-│   ├── dev.txt
-│   └── prod.txt
-├── scripts/              # Utility scripts
-├── tests/                # Test files
-└── Makefile              # Shortcuts for Docker & Django commands
-
+ftc-lendx/
+├── bot_backend/        # Django project that currently houses core services
+├── compose/            # Docker Compose definitions for local environments
+├── deploy/             # Container and server deployment assets
+├── docs/               # Assignment brief, research notes, and specifications
+├── scripts/            # Helper scripts for setup and automation
+├── tests/              # Automated tests (to be expanded)
+├── manage.py           # Django management entry point
+└── README.md           # You're here!
 ```
 
-## 🚀 Quick Start
+This structure will grow to include:
+- A modular credit scoring engine
+- Smart contract packages and deployment scripts
+- Front-end/web application code
+- Telegram bot integrations
+- Documentation on architecture, APIs, and operations
+
+---
+
+## 🚀 Getting Started (Current State)
+
+We are beginning with the existing Django + Telegram bot foundation. Use the Makefile and Docker setup for consistent development environments.
 
 ### Prerequisites
+- [Docker](https://www.docker.com/get-started) & [Docker Compose](https://docs.docker.com/compose/install/) **or**
+- Python 3.11+, PostgreSQL 16, and your preferred virtual environment manager
 
-You need one of the following setups:
-
-**Option 1: Docker (Recommended)**
-- [Docker](https://www.docker.com/get-started)
-- [Docker Compose](https://docs.docker.com/compose/install/)
-
-**Option 2: Local Development**
-- Python 3.11+ or Conda/Miniconda
-- PostgreSQL 16
-
-### 🐳 Running with Docker (Recommended)
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/marclevin/fse-xrpl-bot.git
-   cd fse-xrpl-bot
-   ```
-
-2. **Set up environment variables**
-   ```bash
-   cp .env.example .env
-   ```
-   Edit `.env` file and configure:
-   - `DJANGO_SECRET_KEY`: Generate a secure secret key
-   - `TELEGRAM_BOT_TOKEN`: Your Telegram bot token, will get this later.
-   - Other settings as needed
-3. **Use Makefile commands**
-   ```bash
-    make up             # build + start services
-    make down           # stop services (keep DB data)
-    make build          # rebuild the web container
-    make logs           # follow Django logs
-
-    # Django manage.py shortcuts
-    make migrate
-    make makemigrations
-    make createsuperuser
-    make shell
-    make manage CMD=showmigrations
-    ```
-
-
-4. **Access the application**
-   - Django backend: http://localhost:8000
-   - PostgreSQL: localhost:5433 (Or whatever is mapped in `docker-compose.dev.yml`)
-
-### 🐍 Local Development Setup
-
-#### Using Conda (Recommended for local development)
-
-1. **Create and activate conda environment**
-   ```bash
-   conda create -n fse-xrpl-bot python=3.11 -y
-   conda activate fse-xrpl-bot
-   pip install -r requirements/dev.txt
-   ```
-
-#### Using Virtual Environment
-
-1. **Create and activate virtual environment**
-   ```bash
-   python -m venv venv
-    # Windows
-    venv\Scripts\activate
-    # macOS/Linux
-    source venv/bin/activate
-
-    pip install -r requirements/dev.txt
-    ```
-
-#### Database Setup for Local Development
-
-1. **Install and start PostgreSQL**
-   - Follow [PostgreSQL installation guide](https://www.postgresql.org/download/)
-   - (Recommended) Download [PGAdmin](https://www.pgadmin.org/download/) for a GUI interface
-
-2. **Create database and user**
-   ```sql
-   CREATE DATABASE fse_db;
-   CREATE USER fse_user WITH PASSWORD 'fse_password';
-   GRANT ALL PRIVILEGES ON DATABASE fse_db TO fse_user;
-   ```
-
-3. **Run Django migrations**
-   ```bash
-   python manage.py migrate
-   ```
-
-4. **Create superuser (optional)**
-   ```bash
-   python manage.py createsuperuser
-   ```
-
-5. **Run development server**
-   ```bash
-   python manage.py runserver
-   ```
-
-## 🔧 Configuration
-
-### Environment Variables
-
-Key environment variables in `.env`:
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `DJANGO_SETTINGS_MODULE` | Django settings module | `bot_backend.settings.dev` |
-| `DJANGO_SECRET_KEY` | Django secret key | `change-me` |
-| `ALLOWED_HOSTS` | Allowed hosts for Django | `localhost,127.0.0.1` |
-| `DB_HOST` | Database host | `localhost` |
-| `DB_PORT` | Database port | `5433` |
-| `DB_NAME` | Database name | `fse_db` |
-| `DB_USER` | Database user | `fse_user` |
-| `DB_PASSWORD` | Database password | `fse_password` |
-| `TELEGRAM_BOT_TOKEN` | Telegram bot token | `xxx` |
-
-### Django Settings
-
-The project uses multiple settings files:
-- `base.py`: Common settings
-- `dev.py`: Development settings
-- `prod.py`: Production settings
-
-## 🤖 Telegram Bot Setup
-
-1. **Create a Telegram Bot**
-   - Message @BotFather on Telegram
-   - Use `/newbot` command
-   - Follow instructions to get your bot token
-
-2. **Configure the bot token**
-   - Add your token to `.env` file: `TELEGRAM_BOT_TOKEN=your_token_here`
-
-3. **Start the bot**
-   - The bot will start automatically with the Django application
-   - Check `telegram_bot/` directory for bot implementation
-
-## 📊 Database Management
-
-### Migrations
-
+### Quick Start with Docker
 ```bash
-# Create new migrations
-python manage.py makemigrations
+# Clone the repository
+ git clone <project-url>
+ cd ftc-lendx
 
-# Apply migrations
+# Copy and configure environment variables
+ cp .env.example .env
+ # Update secrets such as DJANGO_SECRET_KEY and TELEGRAM_BOT_TOKEN
+
+# Build and run services
+ make up
+```
+Services default to:
+- Django backend: http://localhost:8000
+- PostgreSQL: localhost:5433 (adjust as needed in `compose/docker-compose.dev.yml`)
+
+### Local Python Environment
+```bash
+python -m venv .venv
+source .venv/bin/activate  # or .venv\Scripts\activate on Windows
+pip install -r requirements/dev.txt
+
+# Configure database credentials and environment variables, then run:
 python manage.py migrate
-
-# Show migration status
-python manage.py showmigrations
+python manage.py runserver
 ```
 
-### Database Management
-
-**Using Docker:**
+### Helpful Make Targets
 ```bash
-make migrate
-make makemigrations
-make createsuperuser
-make manage CMD="dbshell"
+make build           # Rebuild the web image
+make logs            # Tail application logs
+make migrate         # Apply database migrations
+make manage CMD=test # Run Django tests
 ```
 
-**Local PostgreSQL:**
-```bash
-psql -h localhost -U fse_user -d fse_db
-```
+---
 
-## 🧪 Testing
+## 📝 Documentation & Deliverables
 
-```bash
-# Run all tests
-make manage CMD="test"
-# or directly
-docker compose -f compose/docker-compose.dev.yml exec web python manage.py test
+Keep project documentation in the `docs/` directory. Over the term, we will produce:
 
-```
+- **Project & Technical Specification** (market research, requirements, user stories, UI mockups, architecture diagrams, technology choices)
+- **Lessons Learnt Report** (individual reflection)
+- **Proof of Concept** (this repository + deployed demo)
+- **Presentation & Demo** showcasing the solution
 
-## 📚 API Documentation
+Upcoming course deadlines:
+- **10 Oct:** Specification check-in
+- **17 Oct:** Final specification submission
+- **24 Oct:** POC check-in
+- **31 Oct:** POC + presentation demo
+- **3 Nov:** Final submission
 
-- Django Admin: http://localhost:8000/admin/
-- API endpoints will be available at http://localhost:8000/api/
+---
 
+## 🔭 Next Steps
 
-## Logs
+- Set up research sprints to understand user needs, regulatory constraints, and technical feasibility (open banking, XRPL EVM).
+- Begin prototyping the credit scoring engine, Telegram bot flow, and smart contract architecture.
 
-**Docker logs:**
-```bash
-# All services
-docker-compose -f compose/docker-compose.dev.yml logs
+This README will evolve alongside the project. Update it regularly to reflect the latest architecture, setup steps, and learnings so new contributors can onboard quickly.
 
-# Specific service
-docker-compose -f compose/docker-compose.dev.yml logs web
-```
+---
 
-## 📄 License
+## 🤝 Contributing
 
-Will figure out later.
+1. Create a new branch for your feature or fix.
+2. Run tests and linters before committing.
+3. Submit a descriptive pull request summarising motivation, approach, and follow-up tasks.
+
+If you find gaps or have suggestions, open an issue or start a conversation—this repo is meant to adapt as our understanding grows.
+
+---
+
+## 📬 Support & Contact
+
+- **Hub Space:** Tuesday–Thursday, 09:00–18:00
+- **Technical & Business Support:** Wednesdays, 11:00–13:00 at the Hub
+- **Team Channels:** Use our agreed Slack/Discord/Notion groups for daily coordination
+
+Let's build responsibly, document transparently, and keep the end-users—borrowers seeking fair credit access—at the centre of every design decision.

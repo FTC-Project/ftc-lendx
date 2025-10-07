@@ -26,3 +26,4 @@ exec uvicorn bot_backend.asgi:application \
   --port "${PORT:-8000}" \
   --workers "${WEB_CONCURRENCY:-4}" \
   --lifespan off
+  # Make sure hot reload ON for dev

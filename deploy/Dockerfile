@@ -17,7 +17,7 @@ RUN addgroup --system app && adduser --system --ingroup app app
 WORKDIR /app
 
 # ---- install deps (still root) ----
-COPY requirements/prod.txt /tmp/requirements.txt
+COPY requirements.txt /tmp/requirements.txt
 RUN pip install --upgrade pip \
  && pip install --no-cache-dir -r /tmp/requirements.txt
 
@@ -32,4 +32,4 @@ COPY --chown=app:app . /app
 USER app
 
 # In case the repo bind-mount removes +x, we invoke via bash (no +x needed)
-CMD ["bash", "/app/scripts/entrypoint.sh"]
+CMD ["bash", "/app/scripts/entrypoint.dev.sh"]

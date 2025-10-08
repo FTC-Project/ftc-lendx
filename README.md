@@ -122,11 +122,21 @@ This README will evolve alongside the project. Update it regularly to reflect th
 
 ## 🤝 Contributing
 
-1. Create a new branch for your feature or fix.
-2. Run tests and linters before committing.
-3. Submit a descriptive pull request summarising motivation, approach, and follow-up tasks.
+1. **Branching**  
+   - For each issue, create a new branch using GitHub’s default naming convention (e.g., `15-workflow-branching-strategy`).  
+   - Branch names should clearly reference the issue number and purpose.
 
-If you find gaps or have suggestions, open an issue or start a conversation—this repo is meant to adapt as our understanding grows.
+2. **Commits**  
+   - Write short, descriptive commit messages using clear language (e.g., “Add Celery task for wallet creation”).  
+   - Avoid vague terms like “fix stuff” or “update”.
+
+3. **Pull Requests (PRs)**  
+   - Once your feature or fix is ready, open a PR to merge into `main`. 
+   - Another team member **must review and approve** your PR before merging.
+
+4. **Collaboration**  
+   - If you find gaps or have suggestions, open an issue or start a discussion.  
+   - This repo is meant to evolve as our understanding grows.
 
 ---
 

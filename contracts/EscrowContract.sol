@@ -1,5 +1,20 @@
 pragma solidity ^0.8.20;
 
+/*
+  Overview (for this PR):
+  - Single escrow contract that keeps per-loan records (mapping by loanId).
+  - LoanRegistry is the only caller; users don't call this directly.
+  - Current functions show the shape of the API (lock -> release -> repay), not final money movement.
+
+  What we’ll tighten in a follow-up PR (not blocking this one):
+  - Actually move ETH in/out of escrow (make the relevant functions payable and check msg.value).
+  - Emit events like EscrowFunded / EscrowReleased / EscrowRepaid so indexers can track flows.
+  - Add basic safety: reentrancy guard and use low-level call{} for sends instead of transfer().
+  - Validate amounts and one-time release (e.g., don’t release twice; make sure funded >= amount).
+*/
+
+
+
 contract EscrowContract {
     struct EscrowData {
         address lender;

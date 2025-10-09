@@ -1,5 +1,20 @@
 pragma solidity ^0.8.20;
 
+/*
+  Overview (for this PR):
+  - Simple deposit/withdraw pool sketch so we have an ABI to point at.
+  - The idea is: lenders deposit here; LoanRegistry can ask the pool to fund a loan.
+
+  What we’ll tighten in a follow-up PR (not blocking this one):
+  - Send funds directly from the Pool to the Escrow (not to the Registry).
+  - Add events for deposits, withdrawals, loan funding, and repayments to help off-chain tracking.
+  - Add a basic share accounting model (or ERC4626-style wrapper) so rewards are proportional.
+  - Add safety around ETH transfers and reentrancy on withdraw/fund paths.
+  - Don’t change totals on "repayment received" until real accounting is in place.
+*/
+
+
+
 contract LiquidityPool {
     mapping(address => uint256) public deposits;
     uint256 public totalDeposits;

@@ -1,6 +1,24 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+/*
+  Overview (for this PR):
+  - Single controller of the loan lifecycle: Requested -> Funded -> Active -> Repaid/Defaulted.
+  - Orchestrates calls to Escrow (hold/release/repay), LiquidityPool (if using pooled funds),
+    and CreditTrustToken (mint a badge after successful repayment).
+
+  What we’ll tighten in a follow-up PR (not blocking this one):
+  - Enforce real value flows:
+      * P2P: fundLoan should be payable and forward msg.value to Escrow.
+      * Pool: pool should send ETH straight to Escrow.
+  - Gate who can call which step (e.g., only borrower or only registry at the right times).
+  - Compute the actual amount due (principal + interest) and handle due dates / default case.
+  - Emit richer events (include amounts and whether funding came from Pool or P2P).
+  - Mark referenced contract addresses as immutable and add a simple pause switch for emergencies.
+*/
+
+
+
 interface IEscrow {
     function lockFunds(uint256 loanId, address lender, uint256 amount) external;
     function releaseToBorrower(uint256 loanId, address borrower) external;

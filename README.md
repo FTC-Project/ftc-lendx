@@ -54,41 +54,42 @@ We are beginning with the existing Django + Telegram bot foundation. Use the Mak
 ### Prerequisites
 - [Docker](https://www.docker.com/get-started) & [Docker Compose](https://docs.docker.com/compose/install/) **or**
 - Python 3.11+, PostgreSQL 16, and your preferred virtual environment manager
+- Git for version control
+- Make for task automation (optional but recommended), if you don't have it, you can run the commands manually.
+- Ngrok for local webhook testing (Please sign up for a free account to get a personal auth token)
 
 ### Quick Start with Docker
 ```bash
 # Clone the repository
- git clone <project-url>
- cd ftc-lendx
+git clone https://github.com/marclevin/ftc-lendx.git
+# Move into the project directory
+cd ftc-lendx
 
 # Copy and configure environment variables
  cp .env.example .env
- # Update secrets such as DJANGO_SECRET_KEY and TELEGRAM_BOT_TOKEN
+# Update secrets such as DJANGO_SECRET_KEY and TELEGRAM_BOT_TOKEN with actual values
 
+# Optionally run ngrok for webhook testing
+ ngrok authtoken YOUR_NGROK_AUTH_TOKEN
+ ngrok http 8000 # Keep this running in a separate terminal
+ # Either copy the forwarding URL and paste it in your ENV via PUBLIC_URL or set it directly:
+export PUBLIC_URL=https://your-ngrok-url.ngrok.io
 # Build and run services
  make up
+ # If you don't have Make, use:
+ # docker-compose -f compose/docker-compose.dev.yml up --build
 ```
 Services default to:
 - Django backend: http://localhost:8000
 - PostgreSQL: localhost:5433 (adjust as needed in `compose/docker-compose.dev.yml`)
 
-### Local Python Environment
-```bash
-python -m venv .venv
-source .venv/bin/activate  # or .venv\Scripts\activate on Windows
-pip install -r requirements/dev.txt
-
-# Configure database credentials and environment variables, then run:
-python manage.py migrate
-python manage.py runserver
-```
-
 ### Helpful Make Targets
 ```bash
-make build           # Rebuild the web image
 make logs            # Tail application logs
+make up              # Start services
+make down            # Stop services
+make setwebhook      # Set Telegram bot webhook (requires PUBLIC_URL)
 make migrate         # Apply database migrations
-make manage CMD=test # Run Django tests
 ```
 
 ---

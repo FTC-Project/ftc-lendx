@@ -70,9 +70,11 @@ cd ftc-lendx
 # Update secrets such as DJANGO_SECRET_KEY and TELEGRAM_BOT_TOKEN with actual values
 
 # Optionally run ngrok for webhook testing
- ngrok authtoken YOUR_NGROK_AUTH_TOKEN
- ngrok http 8000 # Keep this running in a separate terminal
- # Either copy the forwarding URL and paste it in your ENV via PUBLIC_URL or set it directly:
+# Replace YOUR_NGROK_AUTH_TOKEN with your actual token from your ngrok account.
+# You can find your auth token after logging into the ngrok dashboard at https://dashboard.ngrok.com/get-started/your-authtoken
+ngrok authtoken YOUR_NGROK_AUTH_TOKEN
+ngrok http 8000 # Keep this running in a separate terminal
+# Either copy the forwarding URL and paste it in your ENV via PUBLIC_URL or set it directly:
 export PUBLIC_URL=https://your-ngrok-url.ngrok.io
 # Build and run services
  make up

@@ -150,7 +150,7 @@ This includes all amounts credited and debited.
 
   TransactionBalanceAmount   decimal          From TransactionBalance.Amount.Amount
 
-  CreatedAt                  string           When the account was written to the DB
+  CreatedAt                  string           When the transaction record was written to the DB
                              (datetime)       
   ----------------------------------------------------------------------------------
 

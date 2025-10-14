@@ -96,7 +96,7 @@ adjustments applied according to defined borrower actions.
 
 **Example Rule:**\
 - On-time payment: **+2 points**\
-- Missed payment: **--20 points**
+- Missed payment: **-20 points**
 
 ### Implementation
 

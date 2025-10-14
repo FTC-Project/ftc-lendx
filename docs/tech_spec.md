@@ -29,12 +29,12 @@ The Nkadime Lending Platform is a decentralized micro-lending solution designed 
 
 **In Scope:**
 
-- Telegram bot interface for borrowers
+- Telegram bot interface for borrowers via Django
 - ABSA Open Banking API integration (sandbox)
 - Python-based alternative credit scoring engine
 - XRPL EVM smart contracts for loan escrow and token minting
 - CreditTrust Token system (non-transferable reputation tokens)
-- KYC verification workflow
+- KYC verification workflow (mocked)
 - Loan application, approval, and repayment flows
 
 **Out of Scope:**
@@ -330,9 +330,9 @@ The platform addresses this through three key mechanisms:
 
 **FR-1.1** Users must be able to register via Telegram using phone number
 
-**FR-1.2** System must perform KYC verification before granting platform access
+**FR-1.2** System must perform KYC verification before granting platform access (Mocked)
 
-**FR-1.3** Platform must support bank account linking via ABSA Open Banking API
+**FR-1.3** Platform must support bank account linking via ABSA Open Banking API (Sandbox)
 
 **FR-1.4** System must request and store explicit user consent for data access
 
@@ -386,11 +386,11 @@ The platform addresses this through three key mechanisms:
 
 ### FR-5: Smart Contract Operations
 
-**FR-5.1** System must deploy loan escrow contracts on XRPL EVM sidechain
+**FR-5.1** System must deploy loan escrow contracts on XRPL EVM sidechain (testnet)
 
 **FR-5.2** Smart contracts must handle state transitions (Pending → Active → Completed/Defaulted)
 
-**FR-5.3** Contracts must automatically release funds to lender upon repayment
+**FR-5.3** Contracts must return repayments to the LiquidityPool and allow the pool to account for and distribute interest pro-rata.
 
 **FR-5.4** Platform must trigger grace period workflows for late payments
 
@@ -761,53 +761,53 @@ Bot: 📝 To apply for a loan:
 
 ```mermaid
 graph TB
-    subgraph "User Layer"
-        U[Telegram User]
-    end
-    
-    subgraph "Presentation Layer"
-        TB[Telegram Bot API]
-    end
-    
-    subgraph "Application Layer"
-        BE[Backend API<br/>Node.js/Python]
-        AUTH[Authentication Service]
-        SCORE[Credit Scoring Engine<br/>Python]
-        LOAN[Loan Management Service]
-    end
-    
-    subgraph "Data Layer"
-        DB[(PostgreSQL<br/>User Data)]
-        CACHE[Redis Cache]
-    end
-    
-    subgraph "External Services"
-        ABSA[ABSA Open Banking API]
-        KYC[KYC Service]
-    end
-    
-    subgraph "Blockchain Layer"
-        XRPL[XRPL EVM Sidechain]
-        ESC[Escrow Smart Contract]
-        CTT[CreditTrust Token Contract]
-    end
-    
-    U --> TB
-    TB --> BE
-    BE --> AUTH
-    BE --> SCORE
-    BE --> LOAN
-    BE --> DB
-    BE --> CACHE
-    BE --> ABSA
-    BE --> KYC
-    LOAN --> ESC
-    LOAN --> CTT
-    ESC --> XRPL
-    CTT --> XRPL
+  subgraph User Layer
+    U[Telegram User]
+  end
+
+  subgraph Django Monolith
+    BOT[Telegram Bot]
+    API[Django + DRF]
+    SCORE[Scoring Module]
+    KYC[Mock KYC Module]
+    AIS[Mock ABSA AIS Adapter]
+    TASKS[Celery Workers]
+  end
+
+  subgraph Infra
+    REDIS[(Redis)]
+    DB[(PostgreSQL)]
+  end
+
+  subgraph Blockchain
+    LP[LiquidityPool]
+    LM[LoanManager]
+    CTT[CreditTrustToken]
+  end
+
+  subgraph Tooling
+    HARDHAT[Hardhat]
+  end
+
+  U --> BOT --> API
+  API --> DB
+  API --> REDIS
+  API --> SCORE
+  API --> AIS
+  API --> KYC
+  API --> TASKS
+  TASKS -->|web3.py JSON-RPC| LP
+  TASKS -->|web3.py JSON-RPC| LM
+  TASKS -->|optional| CTT
+  HARDHAT --> LP
+  HARDHAT --> LM
+  HARDHAT --> CTT
+
 ```
 
 ### 6.1.2 Component Architecture
+
+> Note: The “services” shown are Django apps/modules within a single monolith (not separate microservices).
 
 ```mermaid
 graph LR
@@ -856,7 +856,9 @@ graph LR
 
 ### 6.2.1 Authentication & Permissions
 
-### OAuth 2.0 Authorization Flow
+#### OAuth 2.0 Authorization Flow
+
+> POC Note: ABSA OAuth + AIS are mocked no live bank tokens are used.
 
 ```mermaid
 sequenceDiagram
@@ -1336,247 +1338,629 @@ def get_first_loan_eligibility(user_id):
 
 ## 6.5 Smart Contract Specification
 
+>Scope Note: Pool-only lending with per-loan escrows via a Factory pattern. No P2P lending for now.
+
 ### 6.5.1 Contract Architecture
 
 ```mermaid
 graph TB
     subgraph "Smart Contracts"
-        LM[LoanManager Contract]
-        ESC[Escrow Contract]
-        CTT[CreditTrust Token]
+        LM[LoanManager]
+        EF[EscrowFactory]
+        EImpl[EscrowImplementation]
+        ESC1[Escrow Clone #1]
+        ESC2[Escrow Clone #2]
         LP[Liquidity Pool]
+        CTT[CreditTrustToken]
     end
-    
+
     subgraph "Off-Chain"
         BE[Backend]
-        ORACLE[Price Oracle]
     end
-    
+
+    %% Deployment & wiring
+    BE -->|Deploy| EImpl
+    BE -->|Deploy| EF
+    BE -->|Deploy| LP
+    BE -->|Deploy| CTT
     BE -->|Deploy| LM
-    BE -->|Mint/Burn| CTT
-    LM -->|Create| ESC
-    LM -->|Update Balance| CTT
-    ESC -->|Lock Funds| LP
-    ESC -->|Release Funds| LP
-    ORACLE -->|Price Feed| ESC
+    LM -->|holds refs| LP
+    LM -->|holds refs| CTT
+    LM -->|uses| EF
+    EF -->|clone + initialize| ESC1
+    EF -->|clone + initialize| ESC2
+
+    %% Loan lifecycle (pool-only)
+    BE -->|createLoan| LM
+    LM -->|clone escrow| ESC1
+    BE -->|fundEscrow| LP
+    LP -->|value| ESC1
+    BE -->|markFunded| LM
+    BE -->|releaseToBorrower| ESC1
+    BE -->|repay -> acceptRepayment| ESC1
+    BE -->|settleToPool| ESC1
+    ESC1 -->|principal+interest| LP
+    BE -->|markRepaid/Defaulted| LM
+    LM -->|MINT/BURN| CTT
+
 ```
+
+*Key Changes*:
+- **EscrowFactory**: Uses EIP-1167 minimal proxy pattern for gas-efficient per-loan escrows
+- **LoanManager**: Central coordinator, holds references to LiquidityPool and CreditTrustToken
+- **CreditTrustToken**: Non-transferable token contract with mint/burn functions callable only
+- **LiquidityPool**: is the only lender; funds each escrow and receives repayments
 
 ### 6.5.2 Loan State Machine
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Initiated: User applies
-    Initiated --> Funded: Lender deposits
-    Funded --> Active: Contract deployed
-    Active --> GracePeriod: Payment missed
-    Active --> Repaid: On-time payment
-    GracePeriod --> Repaid: Late payment (50% penalty)
-    GracePeriod --> Defaulted: No payment after 7 days
-    Repaid --> [*]: Tokens minted
-    Defaulted --> [*]: Tokens burned
+    [*] --> Created: LoanManager.createLoan
+    Created --> Funded: LiquidityPool.fundEscrow
+    Funded --> Disbursed: Escrow.releaseToBorrower
+    Disbursed --> Repaid: Repayment within due/grace
+    Disbursed --> Defaulted: No payment after grace
+    Repaid --> [*]: CTT minted (full/half)
+    Defaulted --> [*]: CTT burned
+
 ```
+
+#### Token Rules
+- **On-Time Repayment**: mint = principal / 100
+- **Late Repayment (within 7 days)**: mint = (principal / 100) * 0.5
+- **Default (after 7 days)**: burn = principal / 100
 
 ### 6.5.3 Key Smart Contracts
 
-### CreditTrust Token Contract
+#### CreditTrust Token Contract
 
 ```solidity
-*// SPDX-License-Identifier: MIT*
-pragma solidity ^0.8.0;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
 
+/// @title CreditTrustToken - soulbound reputation token
+/// @notice Only LoanManager (admin) can mint/burn; non-transferable
 contract CreditTrustToken {
+    address public admin;
     mapping(address => int256) public tokenBalance;
     mapping(address => bool) public isInitialized;
-    
-    event UserInitialized(address indexed user, uint256 trustScore);
-    event TokensMinted(address indexed user, uint256 amount);
-    event TokensBurned(address indexed user, uint256 amount);
-    
-    function initializeUser(address user, uint256 trustScore) 
-        external 
-        onlyAuthorized 
-    {
-        require(!isInitialized[user], "Already initialized");
-        tokenBalance[user] = 0;
+
+    modifier onlyAdmin() { require(msg.sender == admin, "CTT: not admin"); _; }
+
+    event UserInitialized(address indexed user, uint256 initialTrustScore);
+    event Minted(address indexed user, uint256 amount);
+    event Burned(address indexed user, uint256 amount);
+
+    constructor(address _admin) { admin = _admin; }
+
+    function initializeUser(address user, uint256 initialTrustScore) external onlyAdmin {
+        require(!isInitialized[user], "CTT: already init");
         isInitialized[user] = true;
-        emit UserInitialized(user, trustScore);
+        emit UserInitialized(user, initialTrustScore);
     }
-    
-    function mintTokens(address user, uint256 amount) 
-        external 
-        onlyAuthorized 
-    {
-        require(isInitialized[user], "User not initialized");
+
+    function mint(address user, uint256 amount) external onlyAdmin {
+        require(isInitialized[user], "CTT: not init");
         tokenBalance[user] += int256(amount);
-        emit TokensMinted(user, amount);
+        emit Minted(user, amount);
     }
-    
-    function burnTokens(address user, uint256 amount) 
-        external 
-        onlyAuthorized 
-    {
-        require(isInitialized[user], "User not initialized");
+
+    function burn(address user, uint256 amount) external onlyAdmin {
+        require(isInitialized[user], "CTT: not init");
         tokenBalance[user] -= int256(amount);
-        emit TokensBurned(user, amount);
+        emit Burned(user, amount);
     }
-    
-    function getBalance(address user) external view returns (int256) {
-        return tokenBalance[user];
-    }
+
+    // Soulbound: no transfers
 }
+
 ```
 
-### Loan Escrow Contract
+#### EscrowImplementation Contract
 
 ```solidity
-contract LoanEscrow {
-    enum LoanState { Initiated, Funded, Active, GracePeriod, Repaid, Defaulted }
-    
-    struct Loan {
-        address borrower;
-        uint256 amount;
-        uint256 term;
-        uint256 apr;
-        uint256 dueDate;
-        LoanState state;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+interface ILiquidityPool {
+    function receiveSettlement(uint256 loanId, uint256 interestPortion) external payable;
+}
+
+contract EscrowImplementation {
+    address public loanManager;
+    address public liquidityPool;
+    address public borrower;
+    uint256 public loanId;
+    uint256 public principal;   // approved amount
+    bool    public funded;
+    bool    public released;
+    bool    public closed;
+
+    modifier onlyManager() { require(msg.sender == loanManager, "ESC: not manager"); _; }
+
+    event Funded(uint256 indexed loanId, uint256 amount);
+    event Released(uint256 indexed loanId, address borrower, uint256 amount);
+    event RepaymentAccepted(uint256 indexed loanId, uint256 amount);
+    event Settled(uint256 indexed loanId, uint256 total, uint256 interestPortion);
+
+    /// @notice Initialize clone (called once)
+    function initialize(
+        address _loanManager,
+        address _liquidityPool,
+        address _borrower,
+        uint256 _loanId,
+        uint256 _principal
+    ) external {
+        require(loanManager == address(0), "ESC: already init");
+        loanManager   = _loanManager;
+        liquidityPool = _liquidityPool;
+        borrower      = _borrower;
+        loanId        = _loanId;
+        principal     = _principal;
     }
-    
-    mapping(uint256 => Loan) public loans;
-    uint256 public loanCounter;
-    
-    CreditTrustToken public creditToken;
-    uint256 constant SCALING_FACTOR = 100;
-    uint256 constant GRACE_PERIOD = 7 days;
-    
-    event LoanCreated(uint256 indexed loanId, address borrower, uint256 amount);
-    event RepaymentReceived(uint256 indexed loanId, uint256 amount);
-    event LoanDefaulted(uint256 indexed loanId);
-    
-    function createLoan(
-        address borrower,
-        uint256 amount,
-        uint256 term,
-        uint256 apr
-    ) external onlyAuthorized returns (uint256) {
-        loanCounter++;
-        loans[loanCounter] = Loan({
-            borrower: borrower,
-            amount: amount,
-            term: term,
-            apr: apr,
-            dueDate: block.timestamp + (term * 30 days),
-            state: LoanState.Initiated
-        });
-        emit LoanCreated(loanCounter, borrower, amount);
-        return loanCounter;
+
+    /// @notice Pool funds escrow by sending native value
+    receive() external payable {
+        require(!funded && !released && !closed, "ESC: bad state");
+        require(msg.value == principal, "ESC: wrong amount");
+        funded = true;
+        emit Funded(loanId, msg.value);
     }
-    
-    function processRepayment(uint256 loanId) external payable {
-        Loan storage loan = loans[loanId];
-        require(msg.sender == loan.borrower, "Not borrower");
-        require(loan.state == LoanState.Active, "Invalid state");
-        
-        uint256 tokenChange = loan.amount / SCALING_FACTOR;
-        
-        if (block.timestamp <= loan.dueDate) {
-            *// On-time: mint full tokens*
-            creditToken.mintTokens(loan.borrower, tokenChange);
-            loan.state = LoanState.Repaid;
-        } else if (block.timestamp <= loan.dueDate + GRACE_PERIOD) {
-            *// Grace period: mint 50% tokens*
-            creditToken.mintTokens(loan.borrower, tokenChange / 2);
-            loan.state = LoanState.Repaid;
-        } else {
-            revert("Grace period expired");
-        }
-        
-        emit RepaymentReceived(loanId, msg.value);
+
+    /// @notice Disburse to borrower (after LM marks funded)
+    function releaseToBorrower() external onlyManager {
+        require(funded && !released && !closed, "ESC: bad state");
+        released = true;
+        uint256 amt = address(this).balance;
+        (bool ok,) = payable(borrower).call{value: amt}("");
+        require(ok, "ESC: release fail");
+        emit Released(loanId, borrower, amt);
     }
-    
-    function triggerDefault(uint256 loanId) external {
-        Loan storage loan = loans[loanId];
-        require(block.timestamp > loan.dueDate + GRACE_PERIOD, "Still in grace");
-        
-        uint256 tokenPenalty = loan.amount / SCALING_FACTOR;
-        creditToken.burnTokens(loan.borrower, tokenPenalty);
-        loan.state = LoanState.Defaulted;
-        
-        emit LoanDefaulted(loanId);
+
+    /// @notice Accept repayments (borrower or backend)
+    function acceptRepayment() external payable {
+        require(released && !closed, "ESC: bad state");
+        emit RepaymentAccepted(loanId, msg.value);
+    }
+
+    /// @notice Settle back to pool (principal + interest)
+    function settleToPool(uint256 interestPortion) external onlyManager {
+        require(released && !closed, "ESC: bad state");
+        uint256 total = address(this).balance;
+        require(total > 0, "ESC: nothing to settle");
+        closed = true;
+
+        // Forward full balance to pool
+        (bool ok,) = payable(liquidityPool).call{value: total}("");
+        require(ok, "ESC: settle xfer fail");
+
+        // Notify pool about interest portion (0-value call)
+        ILiquidityPool(liquidityPool).receiveSettlement{value: 0}(loanId, interestPortion);
+
+        emit Settled(loanId, total, interestPortion);
     }
 }
 ```
 
-*(Complete smart contract code in Appendix F)*
+#### EscrowFactory Contract
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "@openzeppelin/contracts/proxy/Clones.sol";
+
+interface IEscrowInit {
+    function initialize(address lm, address lp, address borrower, uint256 loanId, uint256 principal) external;
+}
+
+contract EscrowFactory {
+    using Clones for address;
+
+    address public immutable implementation;
+    address public admin;
+
+    modifier onlyAdmin() { require(msg.sender == admin, "ESCFACT: not admin"); _; }
+
+    event EscrowCloned(address indexed escrow, uint256 indexed loanId, address borrower, uint256 principal);
+
+    constructor(address _implementation, address _admin) {
+        implementation = _implementation;
+        admin = _admin;
+    }
+
+    function createEscrow(
+        address loanManager,
+        address liquidityPool,
+        address borrower,
+        uint256 loanId,
+        uint256 principal
+    ) external onlyAdmin returns (address escrow) {
+        escrow = implementation.clone();
+        IEscrowInit(escrow).initialize(loanManager, liquidityPool, borrower, loanId, principal);
+        emit EscrowCloned(escrow, loanId, borrower, principal);
+    }
+}
+```
+
+#### LoanManager Contract
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+interface IEscrowFactory {
+    function createEscrow(address lm, address lp, address borrower, uint256 loanId, uint256 principal)
+        external returns (address escrow);
+}
+
+interface ICreditTrustToken {
+    function initializeUser(address user, uint256 initialTrustScore) external;
+    function mint(address user, uint256 amount) external;
+    function burn(address user, uint256 amount) external;
+}
+
+contract LoanManager {
+    enum State { Created, Funded, Disbursed, Repaid, Defaulted }
+
+    struct Loan {
+        address borrower;
+        uint256 principal;
+        uint256 aprBps;
+        uint256 termDays;
+        State   state;
+        address escrow;
+        uint256 dueDate; // optional; set off-chain or here
+    }
+
+    address public admin;
+    address public liquidityPool;
+    IEscrowFactory public factory;
+    ICreditTrustToken public ctt;
+
+    uint256 public nextId;
+    mapping(uint256 => Loan) public loans;
+
+    modifier onlyAdmin() { require(msg.sender == admin, "LM: not admin"); _; }
+
+    event LoanCreated(uint256 indexed id, address borrower, uint256 amount, address escrow);
+    event LoanFunded(uint256 indexed id);
+    event LoanDisbursed(uint256 indexed id);
+    event LoanRepaid(uint256 indexed id, bool onTime, uint256 tokens);
+    event LoanDefaulted(uint256 indexed id, uint256 burnAmt);
+
+    constructor(address _admin, address _lp, address _factory, address _ctt) {
+        require(_ctt != address(0), "LM: CTT required");
+        admin = _admin;
+        liquidityPool = _lp;
+        factory = IEscrowFactory(_factory);
+        ctt = ICreditTrustToken(_ctt);
+    }
+
+    function createLoan(address borrower, uint256 amount, uint256 aprBps, uint256 termDays)
+        external onlyAdmin returns (uint256 id, address escrow)
+    {
+        id = ++nextId;
+        escrow = factory.createEscrow(address(this), liquidityPool, borrower, id, amount);
+
+        loans[id] = Loan({
+            borrower: borrower,
+            principal: amount,
+            aprBps: aprBps,
+            termDays: termDays,
+            state: State.Created,
+            escrow: escrow,
+            dueDate: 0
+        });
+
+        // Ensure CTT user initialized (idempotent off-chain; safe to call)
+        ctt.initializeUser(borrower, 0);
+
+        emit LoanCreated(id, borrower, amount, escrow);
+    }
+
+    function markFunded(uint256 id) external onlyAdmin {
+        require(loans[id].state == State.Created, "LM: bad state");
+        loans[id].state = State.Funded;
+        emit LoanFunded(id);
+    }
+
+    function markDisbursed(uint256 id) external onlyAdmin {
+        require(loans[id].state == State.Funded, "LM: bad state");
+        loans[id].state = State.Disbursed;
+        emit LoanDisbursed(id);
+    }
+
+    /// @notice Mint reputation on repayment (full or half per policy)
+    function markRepaid(uint256 id, bool onTime) external onlyAdmin {
+        require(loans[id].state == State.Disbursed, "LM: bad state");
+        loans[id].state = State.Repaid;
+
+        uint256 tokens = loans[id].principal / 100; // SCALING_FACTOR
+        if (!onTime) tokens = tokens / 2;          // within grace: half mint
+        ctt.mint(loans[id].borrower, tokens);
+
+        emit LoanRepaid(id, onTime, tokens);
+    }
+
+    /// @notice Burn reputation on default
+    function markDefaulted(uint256 id) external onlyAdmin {
+        require(loans[id].state == State.Disbursed, "LM: bad state");
+        loans[id].state = State.Defaulted;
+
+        uint256 burnAmt = loans[id].principal / 100;
+        ctt.burn(loans[id].borrower, burnAmt);
+
+        emit LoanDefaulted(id, burnAmt);
+    }
+
+    function getEscrow(uint256 id) external view returns (address) {
+        return loans[id].escrow;
+    }
+}
+
+```
+
+#### LiquidityPool Contract
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+/// @title LiquidityPool (POC) - Minimal pro-rata interest accounting with deposits/withdrawals
+/// @notice Single lender role for funding escrows; multiple depositors earn interest pro-rata.
+contract LiquidityPool {
+    // --- Admin: funds escrows / operational controls ---
+    address public admin;
+
+    // --- Core accounting ---
+    uint256 public totalPool;         // native balance tracked for visibility (not strictly required)
+    uint256 public totalPrincipal;    // sum of all lender principals (used for pro-rata interest)
+    uint256 public accInterestPerShare; // scaled by 1e18
+
+    mapping(address => uint256) public principal;     // user principal
+    mapping(address => uint256) public interestDebt;  // user baseline: principal * acc / 1e18
+
+    // --- Config ---
+    uint256 private constant ACC_SCALE = 1e18;
+
+    // --- Events ---
+    event Deposited(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 principalOut, uint256 interestOut);
+    event EscrowFunded(uint256 indexed loanId, address escrow, uint256 amount);
+    event SettlementReceived(uint256 indexed loanId, uint256 total, uint256 interestPortion);
+
+    // --- Modifiers ---
+    modifier onlyAdmin() { require(msg.sender == admin, "LP: not admin"); _; }
+
+    constructor(address _admin){ admin = _admin; }
+
+    // Accept direct top-ups (treated as admin donation to pool; not principal)
+    receive() external payable { totalPool += msg.value; }
+
+    // -----------------------
+    // LENDER INTERACTIONS
+    // -----------------------
+
+    /// @notice Lender deposits principal (earns interest going forward)
+    function deposit() external payable {
+        require(msg.value > 0, "LP: zero deposit");
+        totalPool += msg.value;
+
+        // settle any accrued interest before changing principal
+        _settle(msg.sender);
+
+        principal[msg.sender] += msg.value;
+        totalPrincipal        += msg.value;
+
+        // reset baseline
+        interestDebt[msg.sender] = (principal[msg.sender] * accInterestPerShare) / ACC_SCALE;
+
+        emit Deposited(msg.sender, msg.value);
+    }
+
+    /// @notice Lender withdraws some/all principal + any pending interest
+    function withdraw(uint256 amount) external {
+        require(amount > 0, "LP: zero withdraw");
+        require(principal[msg.sender] >= amount, "LP: insufficient principal");
+
+        // settle interest first (pays out any accrued interest)
+        uint256 interest = _settle(msg.sender);
+
+        // reduce principal
+        principal[msg.sender] -= amount;
+        totalPrincipal        -= amount;
+
+        // reset baseline to new principal
+        interestDebt[msg.sender] = (principal[msg.sender] * accInterestPerShare) / ACC_SCALE;
+
+        uint256 payout = amount + interest;
+        require(address(this).balance >= payout, "LP: pool balance low");
+
+        totalPool = address(this).balance - payout; // keep a soft tracker
+        (bool ok,) = payable(msg.sender).call{value: payout}("");
+        require(ok, "LP: withdraw transfer fail");
+
+        emit Withdrawn(msg.sender, amount, interest);
+    }
+
+    /// @notice View function: pending interest for lender if settled now
+    function pendingInterest(address user) external view returns (uint256) {
+        uint256 accrued = (principal[user] * accInterestPerShare) / ACC_SCALE;
+        if (accrued <= interestDebt[user]) return 0;
+        return accrued - interestDebt[user];
+    }
+
+    // -----------------------
+    // ESCROW / ADMIN INTERACTIONS
+    // -----------------------
+
+    /// @notice Admin funds a loan's escrow (reduces pool balance)
+    function fundEscrow(uint256 loanId, address payable escrow, uint256 amount) external onlyAdmin {
+        require(amount > 0, "LP: zero fund");
+        require(address(this).balance >= amount, "LP: insufficient pool balance");
+
+        totalPool = address(this).balance - amount;
+
+        (bool ok,) = escrow.call{value: amount}("");
+        require(ok, "LP: fund fail");
+
+        emit EscrowFunded(loanId, escrow, amount);
+    }
+
+    /// @notice Called by Escrow after forwarding full balance back.
+    /// @dev interestPortion is computed off-chain and passed in (saves gas).
+    function receiveSettlement(uint256 loanId, uint256 interestPortion) external payable {
+        // All repayments (principal + interest) increase totalPool
+        totalPool += msg.value;
+        emit SettlementReceived(loanId, msg.value, interestPortion);
+
+        // Distribute ONLY the interest pro-rata via accumulator
+        if (interestPortion > 0 && totalPrincipal > 0) {
+            accInterestPerShare += (interestPortion * ACC_SCALE) / totalPrincipal;
+        }
+        // principal portion just increases pool assets; lenders realize it as withdrawable principal
+    }
+
+    // -----------------------
+    // INTERNALS
+    // -----------------------
+
+    /// @dev Settle and pay out pending interest to user. Returns amount paid.
+    function _settle(address user) internal returns (uint256) {
+        if (principal[user] == 0) {
+            // ensure baseline is zeroed to avoid stale debt
+            if (interestDebt[user] != 0) interestDebt[user] = 0;
+            return 0;
+        }
+
+        uint256 accrued = (principal[user] * accInterestPerShare) / ACC_SCALE;
+        if (accrued <= interestDebt[user]) return 0;
+
+        uint256 pending = accrued - interestDebt[user];
+        require(address(this).balance >= pending, "LP: settle balance low");
+
+        // update baseline BEFORE transfer
+        interestDebt[user] = accrued;
+
+        totalPool = address(this).balance - pending; // soft tracker
+        (bool ok,) = payable(user).call{value: pending}("");
+        require(ok, "LP: settle transfer fail");
+
+        return pending;
+    }
+}
+
+
+```
+
+### 6.5.4 – Contracts Explained
+
+The smart-contract layer consists of five core components working together to enable **pool-based lending with on-chain escrow management** and **credit-reputation tracking**.
+
+| Contract | Purpose | Key Responsibilities | Lifecycle Role |
+|-----------|----------|----------------------|----------------|
+| **LoanManager** | The system controller and single source of truth for all loans. | - Creates new loan records.<br>- Requests new Escrow clones from the `EscrowFactory`.<br>- Tracks loan state (`Created → Funded → Disbursed → Repaid / Defaulted`).<br>- Calls the `CreditTrustToken` to mint or burn reputation after repayment or default. | Governs the entire loan lifecycle and links every other contract together. |
+| **EscrowFactory** | Deploys lightweight **Escrow clones** using the EIP-1167 minimal-proxy pattern. | - Keeps one master `EscrowImplementation` and deploys tiny clones per loan.<br>- Each clone has isolated state but shared logic → massive gas savings. | Called by the `LoanManager` whenever a new loan is created. |
+| **EscrowImplementation** | Handles custody and movement of loan funds. | - Receives funding from the `LiquidityPool`.<br>- Releases funds to the borrower when the `LoanManager` approves.<br>- Accepts repayments and forwards principal + interest back to the pool.<br>- Emits clear lifecycle events (`Funded`, `Released`, `Settled`). | Provides trustless flow of value between borrower and pool for each loan. |
+| **LiquidityPool** | Collects deposits from multiple lenders and distributes interest proportionally. | - Tracks each lender’s `principal`, `interestDebt`, and total pool size.<br>- When a settlement arrives from an escrow, updates an accumulator `accInterestPerShare` to share interest pro-rata.<br>- Allows lenders to `deposit()` and `withdraw(amount)` principal + accrued interest.<br>- The `admin` wallet still handles escrow funding in this POC. | Central liquidity source and repayment sink. Enables passive pooled lending. |
+| **CreditTrustToken (CTT)** | A **soulbound credit-reputation token** that reflects borrower reliability. | - Non-transferable token bound to user identity.<br>- Minted by `LoanManager` when loans are repaid (full or partial credit within grace).<br>- Burned when loans default.<br>- Queried off-chain for credit scoring and borrower ranking. | Enforces behavioural incentives and provides an immutable on-chain trust score. |
 
 ---
 
-## 6.6 Technology Stack Suggestions
+#### Flow Summary
+
+1. **LoanManager** creates a new loan and requests an **Escrow clone** from the **EscrowFactory**.  
+2. **LiquidityPool** (admin wallet) funds the escrow, which then releases funds to the borrower.  
+3. When repayment arrives, the escrow forwards funds back to the **LiquidityPool** and reports interest earned.  
+4. The **LiquidityPool** distributes that interest automatically among all depositors.  
+5. The **LoanManager** finalizes the loan outcome, minting or burning **CreditTrustTokens** for the borrower.  
+
+Together these contracts form a modular, gas-efficient architecture that supports:
+- Transparent fund flow through per-loan escrows.  
+- Scalable lender participation via pooled deposits.  
+- On-chain borrower reputation via the **CreditTrustToken**.
+
+**Admin (who is it?):**  
+The `admin` is a **backend-controlled wallet (EOA)** used by our Django/Celery worker to execute privileged actions on-chain. In the POC it:
+- Calls `LiquidityPool.fundEscrow(...)` to commit pool funds to a specific loan’s Escrow.
+- Orchestrates escrow release/settlement via `LoanManager` + `Escrow` calls.
+- Cannot be an arbitrary user; it’s our service wallet.
+
+**What lenders can do (now):**  
+- `deposit()` native currency into the **single shared LiquidityPool**.  
+- `withdraw(amount)` their **principal + accrued interest**, calculated pro-rata via the pool’s accumulator.  
+- Lenders **do not** fund individual loans directly and **do not** choose borrowers in POC.
+
+---
+
+## 6.6 Technology Stack
 
 ### 6.6.1 Backend Services
 
-**Runtime Environment:**
+**Runtime Environment**
+- **Python 3.11**
+- **Django** (API + Telegram bot webhooks + admin)
+- **Celery** (asynchronous on-chain jobs via web3.py)
+- **Redis 7.x** (Celery broker + result backend)
 
-- Node.js 18.x (API Gateway, Bot Service)
-- Python 3.11 (Credit Scoring Engine)
+**Libraries**
+- **python-telegram-bot** (Telegram integration)
+- **web3.py** (XRPL EVM interaction)
+- **Solidity 0.8.x** (Smart contracts)
 
-**Frameworks:**
+**Notes**
+- Single Django monolith orchestrates everything (no Express/FastAPI).
+- Celery workers submit/sign on-chain tx (admin wallet) and poll receipts.
 
-- Express.js (REST API)
-- python-telegram-bot (Telegram integration)
-- FastAPI (Scoring service)
-
-**Blockchain:**
-
-- Web3.js / ethers.js (XRPL EVM interaction)
-- Solidity 0.8.x (Smart contracts)
+---
 
 ### 6.6.2 Data Layer
 
-**Primary Database:**
+**Primary Database**
+- **PostgreSQL 15.x** — single source of truth for all app data.
 
-- PostgreSQL 15.x (User data, loan records)
+**Schema (POC)**
+- `users`, `consents`, `loans`, `repayments`, `audit_logs`
+- `pool_deposits`, `pool_withdrawals`, `pool_state`
+- `ctt_events` (mint/burn history)
+- `documents` (**bytea** blobs for KYC/ID photos & artifacts)
 
-**Caching:**
+**Notes**
+- For the POC, **store documents as `bytea` in Postgres** (simple, one place to back up).
+- Known trade-offs: larger DB size, slower large-file I/O; acceptable for POC. Future: swap to S3 or similar.
 
-- Redis 7.x (use Upstash)
-
-**Blob Storage:**
-
-- S3 bucket would work but incur costs (KYC documents)
+---
 
 ### 6.6.3 External Integrations
 
-**Open Banking:**
+**Open Banking**
+- ABSA Open Banking **Sandbox** (mocked consent + AIS flows)
+- OAuth 2.0 (Authorization Code + PKCE where applicable)
 
-- ABSA Open Banking API (Sandbox)
-- OAuth 2.0 authentication
+**Messaging**
+- Telegram Bot API (webhook to Django)
 
-**Messaging:**
+**Blockchain**
+- **XRPL EVM Testnet**
+- Contracts: `LoanManager`, `EscrowFactory`, `EscrowImplementation`, `LiquidityPool`, `CreditTrustToken`
 
-- Telegram Bot API
-
-**Blockchain:**
-
-- XRPL EVM Testnet
+---
 
 ### 6.6.4 DevOps & Infrastructure
 
-**Containerization:**
+**Containerization**
+- **Docker** + **Docker Compose** (Django, Celery worker/beat, Redis, Postgres, Hardhat node if needed)
 
-- Docker & Docker Compose
+**Version Control**
+- **GitHub** (no GitHub Actions in POC)
 
-**Version Control:**
+**Deployment/Observability (POC)**
+- No dedicated monitoring stack.
+- Basic Django request/error logs to stdout; Postgres standard logs.
 
-- Git / GitHub
-
-**CI/CD:**
-
-- GitHub Actions (optional)
-
-**Monitoring:**
-
-- Winston (Logging)
-- Sentry (Error tracking)
+**Secrets**
+- `.env` for local/dev; mount into containers (admin wallet key, DB creds, Telegram token).
 
 ---
 
@@ -1637,38 +2021,6 @@ contract LoanEscrow {
 - Credit score → Loan approval
 - KYC verification → Bank linking
 
-## 8. Appendices
-
----
-
-## Appendix A: Complete Requirements Traceability Matrix
-
-*(Detailed mapping of all requirements to user stories and components)*
-
-## Appendix B: Complete Conversation Flows
-
-*(Full Telegram bot conversation specifications)*
-
-## Appendix C: Complete API Documentation
-
-*(OpenAPI/Swagger specifications for all endpoints)*
-
-## Appendix D: Detailed Scoring Algorithm
-
-*(Python implementation with feature extraction logic)*
-
-## Appendix E: Complete Token Economics
-
-*(Token calculation formulas and rehabilitation pathways)*
-
-## Appendix F: Smart Contract Code
-
-*(Complete Solidity code for all contracts)*
-
-## Appendix G: Test Plans
-
-*(Unit, integration, and end-to-end test specifications)*
-
 ---
 
 **Document Status:** Draft v1.0
@@ -1679,6 +2031,6 @@ contract LoanEscrow {
 
 - [ ]  Maqhobosheane (CEO) - Strategic alignment
 - [ ]  Joseph (COO) - Resource allocation
-- [ ]  Marc (CTO) - Technical feasibility
+- [X]  Marc (CTO) - Technical feasibility
 - [ ]  Victor (Business Lead) - Market validation
 - [ ]  Ces (BA Lead) - Requirements completeness

@@ -1,0 +1,36 @@
+@startuml
+title Simple Flow: Telegram → Backend → Scoring → XRPL EVM → Open Banking
+skinparam componentStyle rectangle
+
+actor "Telegram User" as TelegramUser
+
+component "Telegram\n(User Bot)" as Telegram
+component "Backend\n(API Gateway & Orchestrator)" as Backend
+component "Scoring Engine\n(Python)" as Scoring
+component "XRPL EVM\n(Sidechain — Smart Escrow & Tokens)" as XRPL
+component "Open Banking\n(Absa API — user-permissioned)" as OpenBank
+
+' Basic user interaction
+TelegramUser --> Telegram : commands (request loan, repay, status)
+
+' Primary flow
+Telegram --> Backend : webhook / API call
+Backend --> OpenBank : OAuth2 consent + fetch transactions
+OpenBank --> Backend : transaction data (JSON)
+Backend --> Scoring : send transaction features
+Scoring --> Backend : return credit score + explainability
+Backend --> XRPL : submit loan issuance / repayment tx
+XRPL --> Backend : tx receipt & events
+Backend --> Telegram : notify user (score, loan status, repayment, tokens)
+
+' Helpful notes
+note left of OpenBank
+  Bank data is user-permissioned.
+  Consent must be logged & stored.
+end note
+
+note right of XRPL
+  Loan escrow & CreditTrust tokens
+  recorded on-chain (immutable).
+end note
+@enduml

@@ -4,7 +4,7 @@
 
 The **Scoring Service** provides an indication of a borrower's
 creditworthiness --- i.e., the likelihood that an individual will not
-default on their loan instalments.\
+default on their loan installments.\
 This service is a core component of the lending platform and will be
 integrated into most borrower decisioning processes.
 

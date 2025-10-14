@@ -4,15 +4,13 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: fse-xrpl-bot:dev
+    image: ftc-lendx:dev
     env_file:
       - ../.env
-      - ./env/dev.db.env
     environment:
       # Ensure Django hits the containerized DB
       DB_HOST: db
       DB_PORT: "5432"
-      DJANGO_SETTINGS_MODULE: backend.settings.base
     ports:
       - "8000:8000"
     volumes:
@@ -27,17 +25,13 @@ services:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
-    image: fse-xrpl-bot:dev
+    image: ftc-lendx:dev
     command: celery -A backend worker -l info --concurrency=4
     env_file:
       - ../.env
-      - ./env/dev.db.env
     environment:
-      # Ensure Celery reaches Redis & DB (Django reads these in settings)
       DB_HOST: db
       DB_PORT: "5432"
-      CELERY_BROKER_URL: redis://redis:6379/0
-      CELERY_RESULT_BACKEND: redis://redis:6379/0
     volumes:
       - ../:/app
     depends_on:
@@ -49,14 +43,13 @@ services:
   db:
     image: postgres:16
     env_file:
-      - ./env/dev.db.env
+      - ../.env
     ports:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      # Escape $ with $$ for docker-compose to pass through env vars
-      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB -h 127.0.0.1 -p 5432"]
+      test: ["CMD-SHELL", "pg_isready -U $$DB_USER -d $$DB_NAME -h 127.0.0.1 -p 5432"]
       interval: 5s
       timeout: 5s
       retries: 10

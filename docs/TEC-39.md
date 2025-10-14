@@ -6,10 +6,10 @@ This is an important part of the score modelling process. This will
 provide the data required to obtain the initial score. We will obtain
 the data from the open banking API and store it in our tables.
 
-The following tables will be required to store the data:\
-- **Accounts**\
-- **Balances**\
-- **Transactions**\
+The following tables will be required to store the data:
+- **Accounts**
+- **Balances**
+- **Transactions**
 - **Beneficiaries**
 
 ------------------------------------------------------------------------

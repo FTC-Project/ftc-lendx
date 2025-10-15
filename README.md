@@ -81,6 +81,35 @@ export PUBLIC_URL=https://your-ngrok-url.ngrok.io
  # If you don't have Make, use:
  # docker-compose -f compose/docker-compose.dev.yml up --build
 ```
+
+
+
+### How to use the admin panel
+> Ensure the DB is running
+> docker compose -f compose/docker-compose.dev.yml up -d db
+
+1. Migrate the database:
+   ```bash
+   # If using Make
+   make migrate
+   # If not using Make
+   python manage.py migrate
+
+   ```
+
+2. Create a superuser to access the Django admin panel:
+   ```bash
+   # If using Make
+   make createsuperuser
+   # If not using Make
+   python manage.py createsuperuser
+   ```
+
+3. Access the admin panel:
+   - Open your web browser and navigate to `http://localhost:8000/admin`
+   - Log in using the superuser credentials you created.
+
+
 Services default to:
 - Django backend: http://localhost:8000
 - PostgreSQL: localhost:5433 (adjust as needed in `compose/docker-compose.dev.yml`)

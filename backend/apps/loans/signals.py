@@ -43,7 +43,7 @@ def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
         token_units = loan.amount // 100
         TokenEvent.objects.create(
             user=loan.user,
-            kind="mint" if on_time else "mint",  # half-credit could be handled in amount calc
+            kind="mint" if on_time else "mint_partial",  # half-credit could be handled in amount calc
             amount=token_units if on_time else max(1, token_units // 2),
             reason="loan_repaid_on_time" if on_time else "loan_repaid_late",
             meta={"loan_id": str(loan.id)}

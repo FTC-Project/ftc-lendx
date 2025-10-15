@@ -17,10 +17,28 @@ ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 INSTALLED_APPS = [
-    "django.contrib.admin", "django.contrib.auth", "django.contrib.contenttypes",
-    "django.contrib.sessions", "django.contrib.messages", "django.contrib.staticfiles",
+    # Django Admin Deps
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    
+    # Our apps and 3rd party
     "rest_framework",
-    "backend.apps.users", "backend.apps.botutils", "whitenoise.runserver_nostatic"
+    "backend.apps.users.apps.UsersConfig",
+    "backend.apps.kyc.apps.KycConfig",
+    "backend.apps.banking.apps.BankingConfig",
+    "backend.apps.scoring.apps.ScoringConfig",
+    "backend.apps.tokens.apps.TokensConfig",
+    "backend.apps.loans.apps.LoansConfig",
+    "backend.apps.pool.apps.PoolConfig",
+    "backend.apps.audit.apps.AuditConfig",
+    "backend.apps.telegram_bot.apps.TelegramBotConfig",
+    "backend.apps.botutils.apps.BotutilsConfig",
+
+    "whitenoise.runserver_nostatic"
 ]
 
 MIDDLEWARE = [

@@ -16,4 +16,4 @@ class TokenEventAdmin(admin.ModelAdmin):
 @admin.register(TokenTierRule)
 class TokenTierRuleAdmin(admin.ModelAdmin):
     list_display = ("name","min_balance","max_balance","max_loan_cap","base_apr_bps","order")
-    list_editable = ("min_balance","max_balance","max_loan_cap","base_apr_bps","order")
+    list_editable = ("min_balance", "max_balance", "max_loan_cap", "base_apr_bps", "order")

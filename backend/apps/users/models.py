@@ -43,6 +43,7 @@ class Wallet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
+
 class BotSession(models.Model):
     """Maintains conversation context across sessions (FR-7.6)."""
 

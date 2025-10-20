@@ -3,17 +3,9 @@ from typing import Dict, Optional
 
 from functools import lru_cache
 
-from backend.apps.telegram_bot.commands.base import BaseCommand
-from backend.apps.telegram_bot.commands.balance import BalanceCommand
-from backend.apps.telegram_bot.commands.help import HelpCommand
-from backend.apps.telegram_bot.commands.prices import PricesCommand
-from backend.apps.telegram_bot.commands.send import SendCommand
-from backend.apps.telegram_bot.commands.start import StartCommand
-from backend.apps.telegram_bot.commands.wallet import WalletCommand
+from backend.apps.telegram_bot.registry import all_command_metas, get_command_meta
 
 from .messages import TelegramMessage
-
-
 
 
 
@@ -22,19 +14,30 @@ class TelegramBot:
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
         self.api_url = f"https://api.telegram.org/bot{self.token}"
-        self.commands: Dict[str, BaseCommand] = {
-        "help": HelpCommand(),
-        "wallet": WalletCommand(),
-        "prices": PricesCommand(),
-        "balance": BalanceCommand(),
-        "send": SendCommand(),
-        "start": StartCommand(),
-    }
+        self.command_instances: Dict[str, object] = {}
+        self.command_metas = all_command_metas()
+
+    def get_command(self, name: str) -> Optional[object]:
+        inst = self.command_instances.get(name)
+        if inst:
+            return inst
+        meta = self.command_metas.get(name) or get_command_meta(name)
+        if not meta:
+            return None
+        inst = meta.cls()
+        self.command_instances[meta.name] = inst
+        # Cache by alias too, in case for alias lookup later
+        for alias in meta.aliases:
+            self.command_instances[alias] = inst
+        return inst
 
     def dispatch_command(self, msg: TelegramMessage) -> None:
-        command = self.commands.get(msg.command)
+        command = self.get_command(msg.command)
         if command:
-            command.handle(msg)
+            if self.has_permission(command.meta, msg):
+                command.handle(msg)
+            else:
+                print(f"[bot] User {msg.user_id} is not authorized to use {msg.command}")
         else:
             print(f"[bot] Unknown command '{msg.command}'")
 
@@ -46,6 +49,14 @@ class TelegramBot:
         except Exception as exc:  # Never crash the bot
             print(f"[bot] Error while scheduling {msg.command}: {exc}")
             # Just chill
+
+    def has_permission(self, meta: Optional[object], msg: TelegramMessage) -> bool:
+        """Check if the user has permission to run the command."""
+        if not meta:
+            return False
+        # For now, all commands are public, in future will check user role
+        return True
+        
 
 
 @lru_cache(maxsize=1)

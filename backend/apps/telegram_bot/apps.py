@@ -12,6 +12,7 @@ class TelegramBotConfig(AppConfig):
         Keep this for optional future hooks, like signal imports
         or automatic task registration (Celery autodiscovery).
         """
+        from backend.apps.telegram_bot import commands
         from .bot import get_bot
         token = getattr(settings, "TELEGRAM_BOT_TOKEN", None)
         get_bot(token)

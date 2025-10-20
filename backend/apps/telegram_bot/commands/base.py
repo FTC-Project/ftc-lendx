@@ -4,9 +4,13 @@ from typing import Any, Dict
 from abc import ABC, abstractmethod
 # Base command
 class BaseCommand(ABC):
-    def __init__(self, name: str, description: str):
-        self.name = name
-        self.description = description
+    name: str = ""
+    description: str = ""
+    permission: str = "public"  # e.g. "public", "borrower", "lender", "admin"
+    def __init__(self):
+        self.name = getattr(self, "name", "")
+        self.description = getattr(self, "description", "")
+        self.permission = getattr(self, "permission", "")
 
     # This function does validation on the message before enqueueing.
     @abstractmethod

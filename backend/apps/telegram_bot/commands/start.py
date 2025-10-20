@@ -3,12 +3,14 @@ from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.tasks import send_telegram_message_task
 from backend.apps.users.models import TelegramUser
+from backend.apps.telegram_bot.registry import register
 
 
-
+@register(name="start", aliases=["/start"], description="Welcome/Onboarding", permission="public")
 class StartCommand(BaseCommand):
-    def __init__(self):
-        super().__init__(name="help", description="Show help information")
+    name = "start"
+    description = "Welcome/Onboarding"
+    permission = "public"
 
     def handle(self, message: TelegramMessage) -> None:
         send_telegram_message_task.delay(message.chat_id, "Setting up your account...")

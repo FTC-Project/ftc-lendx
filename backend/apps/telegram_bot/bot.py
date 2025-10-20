@@ -53,6 +53,7 @@ class TelegramBot:
         if msg.command and msg.command == "cancel":
             self.fsm.clear(msg.chat_id)
             send_telegram_message_task.delay(msg.chat_id, "❌ Cancelled.")
+            return
         if msg.command:
             try:
                 self.fsm.clear(msg.chat_id)

@@ -7,7 +7,6 @@ from backend.apps.users.models import TelegramUser, Wallet
 from backend.apps.users.xrpl_service import create_user_wallet
 
 
-
 class WalletCommand(BaseCommand):
     def __init__(self):
         super().__init__(name="wallet", description="Create a new XRPL wallet")
@@ -27,11 +26,15 @@ class WalletCommand(BaseCommand):
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
             except TelegramUser.DoesNotExist:
-                send_telegram_message_task.delay(msg.chat_id, "❌ Please use /start first to create your account.")
+                send_telegram_message_task.delay(
+                    msg.chat_id, "❌ Please use /start first to create your account."
+                )
                 return
 
             if hasattr(user, "wallet"):
-                send_telegram_message_task.delay(msg.chat_id, "❌ You already have a wallet.")
+                send_telegram_message_task.delay(
+                    msg.chat_id, "❌ You already have a wallet."
+                )
                 return
 
             gen_wallet = create_user_wallet()
@@ -51,7 +54,11 @@ class WalletCommand(BaseCommand):
                     "Use /balance to check your balance."
                 ),
             )
-            print(f"Wallet created for user {user.telegram_id}: {gen_wallet.classic_address}")
+            print(
+                f"Wallet created for user {user.telegram_id}: {gen_wallet.classic_address}"
+            )
         except Exception as exc:
             print(f"Error in wallet command: {exc}")
-            send_telegram_message_task.delay(msg.chat_id, "❌ Could not create wallet. Please try again later.")
+            send_telegram_message_task.delay(
+                msg.chat_id, "❌ Could not create wallet. Please try again later."
+            )

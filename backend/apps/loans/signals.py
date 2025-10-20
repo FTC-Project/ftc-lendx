@@ -5,6 +5,7 @@ from backend.apps.tokens.models import TokenEvent
 from backend.apps.users.models import Notification
 from django.utils import timezone
 
+
 @receiver(pre_save, sender=Loan, dispatch_uid="loan_state_change_tracker")
 def loan_state_change_tracker(sender, instance: Loan, **kwargs):
     if instance.pk:
@@ -13,11 +14,17 @@ def loan_state_change_tracker(sender, instance: Loan, **kwargs):
     else:
         instance._old_state = None
 
+
 @receiver(post_save, sender=Loan, dispatch_uid="loan_on_state_change")
 def loan_on_state_change(sender, instance: Loan, **kwargs):
     if instance._old_state and instance._old_state != instance.state:
         LoanEvent.objects.create(loan=instance, name=instance.state, details={})
-        Notification.objects.create(user=instance.user, kind=f"loan_{instance.state}", payload={"loan_id": str(instance.id)})
+        Notification.objects.create(
+            user=instance.user,
+            kind=f"loan_{instance.state}",
+            payload={"loan_id": str(instance.id)},
+        )
+
 
 @receiver(post_save, sender=Repayment, dispatch_uid="repayment_reconcile")
 def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
@@ -35,7 +42,10 @@ def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
     loan.save(update_fields=["repaid_amount"])
 
     # If fully repaid: emit token event (on-time vs late via due_date + grace_days)
-    if loan.repaid_amount >= loan.amount + loan.interest_portion and loan.state == "disbursed":
+    if (
+        loan.repaid_amount >= loan.amount + loan.interest_portion
+        and loan.state == "disbursed"
+    ):
         on_time = True
         if loan.due_date:
             past_due = (timezone.now() - loan.due_date).days
@@ -43,10 +53,10 @@ def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
         token_units = loan.amount // 100
         TokenEvent.objects.create(
             user=loan.user,
-            kind="mint" if on_time else "mint_partial",  # half-credit could be handled in amount calc
+            kind=(
+                "mint" if on_time else "mint_partial"
+            ),  # half-credit could be handled in amount calc
             amount=token_units if on_time else max(1, token_units // 2),
             reason="loan_repaid_on_time" if on_time else "loan_repaid_late",
-            meta={"loan_id": str(loan.id)}
+            meta={"loan_id": str(loan.id)},
         )
-
-

@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class TelegramMessage:
     """Clean data structure for incoming messages."""
+
     chat_id: int
     user_id: int
     username: Optional[str]
@@ -15,16 +16,16 @@ class TelegramMessage:
     args: Optional[List[str]] = None
 
     def __post_init__(self) -> None:
-        if self.text.startswith('/'):
+        if self.text.startswith("/"):
             parts = self.text.split()
             self.command = parts[0][1:].lower()
             self.args = parts[1:] if len(parts) > 1 else []
 
     def to_payload(self) -> Dict[str, Any]:
         return asdict(self)
-    
+
     # function to go from payload to TelegramMessage
-    def from_payload(data: Dict[str, Any]) -> Optional['TelegramMessage']:
+    def from_payload(data: Dict[str, Any]) -> Optional["TelegramMessage"]:
         try:
             return TelegramMessage(**data)
         except TypeError:
@@ -41,7 +42,7 @@ def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:
     chat = message.get("chat", {})
     text = (message.get("text") or "").strip()
 
-    if not text or not text.startswith('/'):
+    if not text or not text.startswith("/"):
         return None  # Only process commands for now
 
     return TelegramMessage(

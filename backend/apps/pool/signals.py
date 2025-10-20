@@ -3,6 +3,7 @@ from django.dispatch import receiver
 from django.db import transaction
 from .models import PoolDeposit, PoolWithdrawal, PoolAccount
 
+
 @receiver(post_save, sender=PoolDeposit, dispatch_uid="pool_update_on_deposit")
 def pool_update_on_deposit(sender, instance: PoolDeposit, created, **kwargs):
     """
@@ -12,7 +13,9 @@ def pool_update_on_deposit(sender, instance: PoolDeposit, created, **kwargs):
         return
 
     def _apply():
-        acc, _ = PoolAccount.objects.select_for_update().get_or_create(user=instance.user)
+        acc, _ = PoolAccount.objects.select_for_update().get_or_create(
+            user=instance.user
+        )
         acc.principal += instance.amount
         acc.save(update_fields=["principal", "updated_at"])
 
@@ -29,7 +32,9 @@ def pool_update_on_withdrawal(sender, instance: PoolWithdrawal, created, **kwarg
         return
 
     def _apply():
-        acc, _ = PoolAccount.objects.select_for_update().get_or_create(user=instance.user)
+        acc, _ = PoolAccount.objects.select_for_update().get_or_create(
+            user=instance.user
+        )
         acc.principal = max(0, acc.principal - instance.principal_out)
         acc.accrued_interest = max(0, acc.accrued_interest - instance.interest_out)
         acc.save(update_fields=["principal", "accrued_interest", "updated_at"])

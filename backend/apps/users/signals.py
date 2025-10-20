@@ -4,6 +4,7 @@ from .models import TelegramUser, BotSession
 from backend.apps.tokens.models import CreditTrustBalance
 from backend.apps.pool.models import PoolAccount
 
+
 @receiver(post_save, sender=TelegramUser, dispatch_uid="users_bootstrap_on_create")
 def bootstrap_user_related(sender, instance: TelegramUser, created, **kwargs):
     if not created:

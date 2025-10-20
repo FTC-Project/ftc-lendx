@@ -10,48 +10,107 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('users', '0002_telegramuser_national_id_telegramuser_phone_e164_and_more'),
+        ("users", "0002_telegramuser_national_id_telegramuser_phone_e164_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='TokenTierRule',
+            name="TokenTierRule",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=32, unique=True)),
-                ('min_balance', models.IntegerField()),
-                ('max_balance', models.IntegerField()),
-                ('max_loan_cap', models.IntegerField()),
-                ('base_apr_bps', models.IntegerField()),
-                ('order', models.PositiveIntegerField(default=0)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("name", models.CharField(max_length=32, unique=True)),
+                ("min_balance", models.IntegerField()),
+                ("max_balance", models.IntegerField()),
+                ("max_loan_cap", models.IntegerField()),
+                ("base_apr_bps", models.IntegerField()),
+                ("order", models.PositiveIntegerField(default=0)),
             ],
             options={
-                'ordering': ['order'],
+                "ordering": ["order"],
             },
         ),
         migrations.CreateModel(
-            name='CreditTrustBalance',
+            name="CreditTrustBalance",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('balance', models.IntegerField(default=0)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='ctt_balance', to='users.telegramuser')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("balance", models.IntegerField(default=0)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ctt_balance",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='TokenEvent',
+            name="TokenEvent",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('kind', models.CharField(choices=[('mint', 'Mint'), ('burn', 'Burn'), ('init', 'Initialize')], db_index=True, max_length=8)),
-                ('amount', models.IntegerField()),
-                ('reason', models.CharField(blank=True, default='', max_length=64)),
-                ('tx_hash', models.CharField(blank=True, db_index=True, max_length=128, null=True)),
-                ('meta', models.JSONField(blank=True, default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='ctt_events', to='users.telegramuser')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "kind",
+                    models.CharField(
+                        choices=[
+                            ("mint", "Mint"),
+                            ("burn", "Burn"),
+                            ("init", "Initialize"),
+                        ],
+                        db_index=True,
+                        max_length=8,
+                    ),
+                ),
+                ("amount", models.IntegerField()),
+                ("reason", models.CharField(blank=True, default="", max_length=64)),
+                (
+                    "tx_hash",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=128, null=True
+                    ),
+                ),
+                ("meta", models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="ctt_events",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['user', 'kind', 'created_at'], name='tokens_toke_user_id_07d8dd_idx')],
+                "indexes": [
+                    models.Index(
+                        fields=["user", "kind", "created_at"],
+                        name="tokens_toke_user_id_07d8dd_idx",
+                    )
+                ],
             },
         ),
     ]

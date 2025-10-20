@@ -10,100 +10,249 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('users', '0002_telegramuser_national_id_telegramuser_phone_e164_and_more'),
+        ("users", "0002_telegramuser_national_id_telegramuser_phone_e164_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Loan',
+            name="Loan",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('amount', models.IntegerField()),
-                ('term_days', models.PositiveIntegerField()),
-                ('apr_bps', models.PositiveIntegerField()),
-                ('state', models.CharField(choices=[('created', 'Created'), ('funded', 'Funded'), ('disbursed', 'Disbursed'), ('repaid', 'Repaid'), ('defaulted', 'Defaulted'), ('declined', 'Declined')], db_index=True, default='created', max_length=16)),
-                ('contract_address', models.CharField(blank=True, db_index=True, max_length=64, null=True)),
-                ('escrow_address', models.CharField(blank=True, db_index=True, max_length=64, null=True)),
-                ('escrow_factory', models.CharField(blank=True, max_length=64, null=True)),
-                ('onchain_loan_id', models.BigIntegerField(blank=True, db_index=True, null=True)),
-                ('disbursed_at', models.DateTimeField(blank=True, null=True)),
-                ('due_date', models.DateTimeField(blank=True, null=True)),
-                ('grace_days', models.PositiveIntegerField(default=7)),
-                ('repaid_amount', models.IntegerField(default=0)),
-                ('interest_portion', models.IntegerField(default=0)),
-                ('principal_portion', models.IntegerField(default=0)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='loans', to='users.telegramuser')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("amount", models.IntegerField()),
+                ("term_days", models.PositiveIntegerField()),
+                ("apr_bps", models.PositiveIntegerField()),
+                (
+                    "state",
+                    models.CharField(
+                        choices=[
+                            ("created", "Created"),
+                            ("funded", "Funded"),
+                            ("disbursed", "Disbursed"),
+                            ("repaid", "Repaid"),
+                            ("defaulted", "Defaulted"),
+                            ("declined", "Declined"),
+                        ],
+                        db_index=True,
+                        default="created",
+                        max_length=16,
+                    ),
+                ),
+                (
+                    "contract_address",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=64, null=True
+                    ),
+                ),
+                (
+                    "escrow_address",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=64, null=True
+                    ),
+                ),
+                (
+                    "escrow_factory",
+                    models.CharField(blank=True, max_length=64, null=True),
+                ),
+                (
+                    "onchain_loan_id",
+                    models.BigIntegerField(blank=True, db_index=True, null=True),
+                ),
+                ("disbursed_at", models.DateTimeField(blank=True, null=True)),
+                ("due_date", models.DateTimeField(blank=True, null=True)),
+                ("grace_days", models.PositiveIntegerField(default=7)),
+                ("repaid_amount", models.IntegerField(default=0)),
+                ("interest_portion", models.IntegerField(default=0)),
+                ("principal_portion", models.IntegerField(default=0)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="loans",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Disbursement',
+            name="Disbursement",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('destination', models.CharField(max_length=64)),
-                ('amount', models.IntegerField()),
-                ('status', models.CharField(db_index=True, default='pending', max_length=16)),
-                ('tx_ref', models.CharField(blank=True, db_index=True, max_length=128, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('confirmed_at', models.DateTimeField(blank=True, null=True)),
-                ('loan', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='disbursement', to='loans.loan')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("destination", models.CharField(max_length=64)),
+                ("amount", models.IntegerField()),
+                (
+                    "status",
+                    models.CharField(db_index=True, default="pending", max_length=16),
+                ),
+                (
+                    "tx_ref",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=128, null=True
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("confirmed_at", models.DateTimeField(blank=True, null=True)),
+                (
+                    "loan",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="disbursement",
+                        to="loans.loan",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='LoanEvent',
+            name="LoanEvent",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('name', models.CharField(db_index=True, max_length=32)),
-                ('details', models.JSONField(blank=True, default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('loan', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='events', to='loans.loan')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("name", models.CharField(db_index=True, max_length=32)),
+                ("details", models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "loan",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="events",
+                        to="loans.loan",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='LoanOffer',
+            name="LoanOffer",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('monthly_payment', models.IntegerField()),
-                ('total_repayable', models.IntegerField()),
-                ('breakdown', models.JSONField(default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('loan', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='offer', to='loans.loan')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("monthly_payment", models.IntegerField()),
+                ("total_repayable", models.IntegerField()),
+                ("breakdown", models.JSONField(default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "loan",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="offer",
+                        to="loans.loan",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='RepaymentSchedule',
+            name="RepaymentSchedule",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('installment_no', models.PositiveIntegerField()),
-                ('due_at', models.DateTimeField(db_index=True)),
-                ('amount_due', models.IntegerField()),
-                ('amount_paid', models.IntegerField(default=0)),
-                ('status', models.CharField(db_index=True, default='pending', max_length=16)),
-                ('loan', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='schedule', to='loans.loan')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("installment_no", models.PositiveIntegerField()),
+                ("due_at", models.DateTimeField(db_index=True)),
+                ("amount_due", models.IntegerField()),
+                ("amount_paid", models.IntegerField(default=0)),
+                (
+                    "status",
+                    models.CharField(db_index=True, default="pending", max_length=16),
+                ),
+                (
+                    "loan",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="schedule",
+                        to="loans.loan",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['installment_no'],
+                "ordering": ["installment_no"],
             },
         ),
         migrations.CreateModel(
-            name='Repayment',
+            name="Repayment",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('amount', models.IntegerField()),
-                ('received_at', models.DateTimeField(auto_now_add=True)),
-                ('method', models.CharField(default='telegram', max_length=32)),
-                ('tx_hash', models.CharField(blank=True, db_index=True, max_length=128, null=True)),
-                ('meta', models.JSONField(blank=True, default=dict)),
-                ('loan', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='repayments', to='loans.loan')),
-                ('schedule', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='repayments', to='loans.repaymentschedule')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("amount", models.IntegerField()),
+                ("received_at", models.DateTimeField(auto_now_add=True)),
+                ("method", models.CharField(default="telegram", max_length=32)),
+                (
+                    "tx_hash",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=128, null=True
+                    ),
+                ),
+                ("meta", models.JSONField(blank=True, default=dict)),
+                (
+                    "loan",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="repayments",
+                        to="loans.loan",
+                    ),
+                ),
+                (
+                    "schedule",
+                    models.ForeignKey(
+                        blank=True,
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="repayments",
+                        to="loans.repaymentschedule",
+                    ),
+                ),
             ],
         ),
         migrations.AddIndex(
-            model_name='loan',
-            index=models.Index(fields=['user', 'state', 'created_at'], name='loans_loan_user_id_e6d359_idx'),
+            model_name="loan",
+            index=models.Index(
+                fields=["user", "state", "created_at"],
+                name="loans_loan_user_id_e6d359_idx",
+            ),
         ),
         migrations.AlterUniqueTogether(
-            name='repaymentschedule',
-            unique_together={('loan', 'installment_no')},
+            name="repaymentschedule",
+            unique_together={("loan", "installment_no")},
         ),
     ]

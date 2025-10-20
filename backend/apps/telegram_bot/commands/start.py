@@ -5,7 +5,6 @@ from backend.apps.telegram_bot.tasks import send_telegram_message_task
 from backend.apps.users.models import TelegramUser
 
 
-
 class StartCommand(BaseCommand):
     def __init__(self):
         super().__init__(name="help", description="Show help information")
@@ -13,7 +12,6 @@ class StartCommand(BaseCommand):
     def handle(self, message: TelegramMessage) -> None:
         send_telegram_message_task.delay(message.chat_id, "Setting up your account...")
         self.task.delay(self.serialize(message))
-        
 
     @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
@@ -50,4 +48,6 @@ class StartCommand(BaseCommand):
             print(f"START completed for user {user.telegram_id}")
         except Exception as exc:
             print(f"Error in start command: {exc}")
-            send_telegram_message_task.delay(msg.chat_id, "Sorry, something went wrong during setup!")
+            send_telegram_message_task.delay(
+                msg.chat_id, "Sorry, something went wrong during setup!"
+            )

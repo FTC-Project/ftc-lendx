@@ -13,15 +13,11 @@ from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.tasks import send_telegram_message_task
 
 
-
-
 from datetime import date
 from typing import List, Optional
 
 
-
 MAX_DAYS = 90
-
 
 
 def _is_iso_date(value: str) -> bool:
@@ -90,7 +86,6 @@ def _extract_arguments(args: List[str]) -> Optional[dict[str, object]]:
     }
 
 
-
 def _parse_iso_date(value: Optional[str]) -> Optional[date]:
     if not value:
         return None
@@ -142,7 +137,9 @@ def _format_price_history_message(history: PriceHistory) -> str:
 
     warning_line = ""
     if history.warnings:
-        warning_bits = [f"{cur.upper()}: {msg}" for cur, msg in history.warnings.items()]
+        warning_bits = [
+            f"{cur.upper()}: {msg}" for cur, msg in history.warnings.items()
+        ]
         warning_line = f"⚠️ {' | '.join(warning_bits)}"
 
     message_sections = [header, range_line, ""]
@@ -155,9 +152,6 @@ def _format_price_history_message(history: PriceHistory) -> str:
     return "\n".join(section for section in message_sections if section).strip()
 
 
-
-
-
 class PricesCommand(BaseCommand):
     def __init__(self):
         super().__init__(name="prices", description="Show historical price information")
@@ -168,7 +162,7 @@ class PricesCommand(BaseCommand):
             send_telegram_message_task.delay(
                 message.chat_id,
                 "❌ Invalid input. Use /prices [symbol] [days] or /prices [symbol] "
-                    "[start-date] [end-date] (YYYY-MM-DD)."
+                "[start-date] [end-date] (YYYY-MM-DD).",
             )
             return
 
@@ -184,9 +178,10 @@ class PricesCommand(BaseCommand):
         setattr(msg, "from_date", from_str)
         setattr(msg, "to_date", to_str)
         setattr(msg, "days", parsed["days"])
-        send_telegram_message_task.delay(message.chat_id, "Fetching price history from CoinGecko...")
+        send_telegram_message_task.delay(
+            message.chat_id, "Fetching price history from CoinGecko..."
+        )
         self.task.delay(self.serialize(msg))
-
 
     @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
@@ -203,16 +198,24 @@ class PricesCommand(BaseCommand):
         days = max(1, min(days, 365))
 
         try:
-            history = fetch_price_history(symbol=symbol, start=start, end=end, days=days)
+            history = fetch_price_history(
+                symbol=symbol, start=start, end=end, days=days
+            )
         except CoinGeckoAPIError as exc:
             print(f"Error fetching price history: {exc}")
-            send_telegram_message_task.delay(msg.chat_id, f"❌ Could not fetch price data: {exc}")
+            send_telegram_message_task.delay(
+                msg.chat_id, f"❌ Could not fetch price data: {exc}"
+            )
             return
 
         if history.status != "ok":
             error_message = history.error or "Unknown error returned by CoinGecko."
             print(f"Price history error: {error_message}")
-            send_telegram_message_task.delay(msg.chat_id, f"❌ Could not fetch price data: {error_message}")
+            send_telegram_message_task.delay(
+                msg.chat_id, f"❌ Could not fetch price data: {error_message}"
+            )
             return
 
-        send_telegram_message_task.delay(msg.chat_id, _format_price_history_message(history))
+        send_telegram_message_task.delay(
+            msg.chat_id, _format_price_history_message(history)
+        )

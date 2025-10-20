@@ -2,6 +2,8 @@ from backend.apps.telegram_bot.messages import TelegramMessage
 from celery import shared_task
 from typing import Any, Dict
 from abc import ABC, abstractmethod
+
+
 # Base command
 class BaseCommand(ABC):
     def __init__(self, name: str, description: str):
@@ -20,5 +22,3 @@ class BaseCommand(ABC):
     @abstractmethod
     def task(self, message_data: dict) -> None:
         raise NotImplementedError("Task method must be implemented by sub-classes")
-    
-

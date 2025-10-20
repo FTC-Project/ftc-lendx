@@ -88,16 +88,14 @@ class RegisterCommand(BaseCommand):
         msg = TelegramMessage.from_payload(message_data)
         fsm = FSMStore()
 
-        # Prevent duplicate registration
-        if TelegramUser.objects.filter(telegram_id=msg.user_id).exists():
-            clear_flow(fsm, msg.chat_id)
-            reply(msg, "You're already registered. Use /help to see commands.")
-            return
-
         state = fsm.get(msg.chat_id)
 
         # Start flow
         if not state:
+            if TelegramUser.objects.filter(telegram_id=msg.user_id).exists():
+                clear_flow(fsm, msg.chat_id)
+                reply(msg, "You're already registered. Use /help to see commands.")
+                return
             data = {
                 "first_name": None,
                 "last_name": None,

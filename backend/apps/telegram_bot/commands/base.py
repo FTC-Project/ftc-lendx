@@ -13,9 +13,6 @@ class BaseCommand(ABC):
     permission: str = "public"  # e.g. "public", "borrower", "lender", "admin"
 
     def __init__(self):
-        self.name = getattr(self, "name", "")
-        self.description = getattr(self, "description", "")
-        self.permission = getattr(self, "permission", "")
         self.fsm = FSMStore()
 
     # This function does validation on the message before enqueueing.

@@ -7,14 +7,18 @@ from backend.apps.telegram_bot.fsm_store import FSMStore
 from backend.apps.telegram_bot.registry import all_command_metas, get_command_meta
 from backend.apps.telegram_bot.tasks import send_telegram_message_task
 
+from django.conf import settings
+
 from .messages import TelegramMessage
 
 
 class TelegramBot:
     """Dispatch Telegram commands and talk to the Bot API."""
 
-    def __init__(self, token: Optional[str] = None):
-        self.token = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    def __init__(self):
+        self.token = getattr(
+            settings, "TELEGRAM_BOT_TOKEN", os.getenv("TELEGRAM_BOT_TOKEN", "")
+        )
         self.api_url = f"https://api.telegram.org/bot{self.token}"
         self.command_instances: Dict[str, object] = {}
         self.command_metas = all_command_metas()
@@ -88,6 +92,6 @@ class TelegramBot:
 
 
 @lru_cache(maxsize=1)
-def get_bot(token: Optional[str] = None) -> TelegramBot:
+def get_bot() -> TelegramBot:
     """Return a singleton TelegramBot instance."""
-    return TelegramBot(token)
+    return TelegramBot()

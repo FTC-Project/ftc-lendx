@@ -52,7 +52,9 @@ def _get_headers() -> Dict[str, str]:
 
 
 def _request(url: str, params: Dict[str, object]) -> Dict[str, object]:
-    response = requests.get(url, params=params, headers=_get_headers(), timeout=REQUEST_TIMEOUT)
+    response = requests.get(
+        url, params=params, headers=_get_headers(), timeout=REQUEST_TIMEOUT
+    )
     if response.status_code != 200:
         try:
             payload = response.json()

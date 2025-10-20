@@ -34,7 +34,7 @@ class XRPLClient:
             resp = self.client.request(req)
 
             if resp.is_successful():
-                balance_drops = (resp.result["account_data"]["Balance"])
+                balance_drops = resp.result["account_data"]["Balance"]
                 balance_xrp = float(drops_to_xrp(balance_drops))
                 print(f"💰 Balance for {address}: {balance_xrp} XRP")
                 return balance_xrp
@@ -46,12 +46,16 @@ class XRPLClient:
             print(f"❌ Error getting balance for {address}: {e}")
             return 0.0
 
-    def send_xrp(self, sender_seed: str, destination: str, amount_xrp: float) -> Optional[str]:
+    def send_xrp(
+        self, sender_seed: str, destination: str, amount_xrp: float
+    ) -> Optional[str]:
         """Send XRP from one address to another - sync transaction."""
         try:
             # Create wallet from seed
             sender_wallet = Wallet.from_seed(sender_seed)
-            print(f"💸 Sending {amount_xrp} XRP from {sender_wallet.classic_address} to {destination}")
+            print(
+                f"💸 Sending {amount_xrp} XRP from {sender_wallet.classic_address} to {destination}"
+            )
 
             # Create payment transaction
             payment = Payment(
@@ -63,7 +67,9 @@ class XRPLClient:
             tx_response = submit_and_wait(payment, self.client, sender_wallet)
 
             if tx_response.is_successful():
-                tx_hash = tx_response.result.get("tx_json", {}).get("hash") or tx_response.result.get("hash")
+                tx_hash = tx_response.result.get("tx_json", {}).get(
+                    "hash"
+                ) or tx_response.result.get("hash")
                 print(f"✅ Transaction successful! Hash: {tx_hash}")
                 return tx_hash
             else:
@@ -82,7 +88,7 @@ class XRPLClient:
 
             return GeneratedWallet(
                 classic_address=wallet.classic_address,
-                seed=wallet.__getattribute__("seed")
+                seed=wallet.__getattribute__("seed"),
             )
 
         except Exception as e:
@@ -96,7 +102,7 @@ class XRPLClient:
 
             return GeneratedWallet(
                 classic_address=wallet.classic_address,
-                seed=wallet.__getattribute__("seed")
+                seed=wallet.__getattribute__("seed"),
             )
 
         except Exception as e:
@@ -121,7 +127,9 @@ class XRPLClient:
             print(f"❌ Error getting transaction history: {e}")
             return []
 
-    def wait_for_balance_update(self, address: str, expected_min_balance: float = 0, timeout: int = 30) -> float:
+    def wait_for_balance_update(
+        self, address: str, expected_min_balance: float = 0, timeout: int = 30
+    ) -> float:
         """Wait for a wallet balance to update - useful after funding."""
         print(f"⏳ Waiting for balance update on {address}...")
 

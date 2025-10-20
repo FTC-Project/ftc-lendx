@@ -10,9 +10,9 @@ from backend.apps.telegram_bot.tasks import send_telegram_message_task
 from .messages import TelegramMessage
 
 
-
 class TelegramBot:
     """Dispatch Telegram commands and talk to the Bot API."""
+
     def __init__(self, token: Optional[str] = None):
         self.token = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
         self.api_url = f"https://api.telegram.org/bot{self.token}"
@@ -41,7 +41,9 @@ class TelegramBot:
             if self.has_permission(command.meta, msg):
                 command.handle(msg)
             else:
-                print(f"[bot] User {msg.user_id} is not authorized to use {msg.command}")
+                print(
+                    f"[bot] User {msg.user_id} is not authorized to use {msg.command}"
+                )
         else:
             print(f"[bot] Unknown command '{msg.command}'")
 
@@ -54,7 +56,7 @@ class TelegramBot:
         if msg.command:
             try:
                 self.fsm.clear(msg.chat_id)
-                #NOTE: For a command left dangling we just kill the previous flow
+                # NOTE: For a command left dangling we just kill the previous flow
                 return self.dispatch_command(msg)
             except Exception as exc:  # Never crash the bot
                 print(f"[bot] Error while scheduling {msg.command}: {exc}")
@@ -82,7 +84,6 @@ class TelegramBot:
             return False
         # For now, all commands are public, in future will check user role
         return True
-        
 
 
 @lru_cache(maxsize=1)

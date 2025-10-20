@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 @dataclass
 class TelegramMessage:
     """Clean data structure for incoming messages."""
+
     chat_id: int
     user_id: int
     username: Optional[str]
@@ -19,21 +20,20 @@ class TelegramMessage:
     args: Optional[List[str]] = None
 
     def __post_init__(self) -> None:
-        if self.text.startswith('/'):
+        if self.text.startswith("/"):
             parts = self.text.split()
             self.command = parts[0][1:].lower()
             self.args = parts[1:] if len(parts) > 1 else []
 
     def to_payload(self) -> Dict[str, Any]:
         return asdict(self)
-    
+
     # function to go from payload to TelegramMessage
-    def from_payload(data: Dict[str, Any]) -> Optional['TelegramMessage']:
+    def from_payload(data: Dict[str, Any]) -> Optional["TelegramMessage"]:
         try:
             return TelegramMessage(**data)
         except TypeError:
             return None
-
 
 
 def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:
@@ -50,8 +50,8 @@ def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:
             first_name=user.get("first_name"),
             last_name=user.get("last_name"),
             text=(msg.get("text") or "").strip() or None,
-            callback_data=cq.get("data"),          # e.g. "reg:back"
-            callback_query_id=cq.get("id"),        # <-- the spinner stopper
+            callback_data=cq.get("data"),  # e.g. "reg:back"
+            callback_query_id=cq.get("id"),  # <-- the spinner stopper
             message_id=msg.get("message_id"),
             inline_message_id=cq.get("inline_message_id"),
         )
@@ -75,4 +75,3 @@ def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:
 
     print("[messages] Unsupported update type:", list(data.keys()))
     return None
-

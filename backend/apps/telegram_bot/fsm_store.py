@@ -9,9 +9,12 @@ KEY = "tg:fsm:v1:{chat_id}"
 LOCK = "tg:fsm:lock:{chat_id}"
 TTL = 15 * 60  # 15 minutes
 
+
 class FSMStore:
     def __init__(self, r: Optional[Redis] = None):
-        self.r = r or Redis.from_url(getattr(settings, "CELERY_BROKER_URL", "redis://redis:6379/0"))
+        self.r = r or Redis.from_url(
+            getattr(settings, "CELERY_BROKER_URL", "redis://redis:6379/0")
+        )
 
     def get(self, chat_id: int) -> Optional[Dict[str, Any]]:
         raw = self.r.get(KEY.format(chat_id=chat_id))
@@ -20,8 +23,8 @@ class FSMStore:
     def set(self, chat_id: int, command: str, step: str, data: Dict[str, Any]):
         payload = {
             "chat_id": chat_id,
-            "command": command,     # e.g., "send"
-            "step": step,           # e.g., "wait_recipient"
+            "command": command,  # e.g., "send"
+            "step": step,  # e.g., "wait_recipient"
             "data": data or {},
             "ts": int(time.time()),
         }

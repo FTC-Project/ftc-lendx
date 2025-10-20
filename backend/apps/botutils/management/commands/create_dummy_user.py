@@ -4,6 +4,7 @@ from backend.apps.users.crypto import encrypt_secret
 from backend.apps.users.xrpl_service import create_user_wallet
 from django.core.management.base import BaseCommand, CommandError
 
+
 class Command(BaseCommand):
     help = "Create a dummy Telegram user with an XRPL wallet for testing."
 
@@ -36,8 +37,10 @@ class Command(BaseCommand):
             user=user,
             network="testnet",
             address=wallet_data.classic_address,
-            secret_encrypted=encrypted_seed
+            secret_encrypted=encrypted_seed,
         )
-        self.stdout.write(self.style.SUCCESS(
-            f"Created dummy user {user.display_name()} with wallet {wallet_data.classic_address}"
-        ))
+        self.stdout.write(
+            self.style.SUCCESS(
+                f"Created dummy user {user.display_name()} with wallet {wallet_data.classic_address}"
+            )
+        )

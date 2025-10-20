@@ -8,45 +8,114 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='TelegramUser',
+            name="TelegramUser",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('telegram_id', models.BigIntegerField(db_index=True, unique=True)),
-                ('username', models.CharField(blank=True, db_index=True, max_length=64, null=True)),
-                ('first_name', models.CharField(blank=True, max_length=128, null=True)),
-                ('last_name', models.CharField(blank=True, max_length=128, null=True)),
-                ('is_active', models.BooleanField(default=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("telegram_id", models.BigIntegerField(db_index=True, unique=True)),
+                (
+                    "username",
+                    models.CharField(
+                        blank=True, db_index=True, max_length=64, null=True
+                    ),
+                ),
+                ("first_name", models.CharField(blank=True, max_length=128, null=True)),
+                ("last_name", models.CharField(blank=True, max_length=128, null=True)),
+                ("is_active", models.BooleanField(default=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
             ],
         ),
         migrations.CreateModel(
-            name='Transfer',
+            name="Transfer",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('destination_address', models.CharField(max_length=64)),
-                ('amount_drops', models.BigIntegerField()),
-                ('tx_hash', models.CharField(blank=True, max_length=128, null=True)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('validated', 'Validated'), ('failed', 'Failed')], default='pending', max_length=16)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('recipient', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='incoming', to='users.telegramuser')),
-                ('sender', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='outgoing', to='users.telegramuser')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("destination_address", models.CharField(max_length=64)),
+                ("amount_drops", models.BigIntegerField()),
+                ("tx_hash", models.CharField(blank=True, max_length=128, null=True)),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("validated", "Validated"),
+                            ("failed", "Failed"),
+                        ],
+                        default="pending",
+                        max_length=16,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "recipient",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="incoming",
+                        to="users.telegramuser",
+                    ),
+                ),
+                (
+                    "sender",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="outgoing",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='Wallet',
+            name="Wallet",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('network', models.CharField(choices=[('testnet', 'TestNet'), ('mainnet', 'MainNet')], default='testnet', max_length=16)),
-                ('address', models.CharField(max_length=64, unique=True)),
-                ('secret_encrypted', models.BinaryField()),
-                ('funded_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='wallet', to='users.telegramuser')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "network",
+                    models.CharField(
+                        choices=[("testnet", "TestNet"), ("mainnet", "MainNet")],
+                        default="testnet",
+                        max_length=16,
+                    ),
+                ),
+                ("address", models.CharField(max_length=64, unique=True)),
+                ("secret_encrypted", models.BinaryField()),
+                ("funded_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="wallet",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
     ]

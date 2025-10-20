@@ -35,11 +35,15 @@ def send_telegram_message_task(
     # 1) stop spinner if needed
     if callback_query_id:
         try:
-            r = requests.post(f"{api_url}/answerCallbackQuery",
-                              json={"callback_query_id": callback_query_id},
-                              timeout=5)
+            r = requests.post(
+                f"{api_url}/answerCallbackQuery",
+                json={"callback_query_id": callback_query_id},
+                timeout=5,
+            )
             if not r.ok:
-                print(f"[task] Warning: answerCallbackQuery failed {r.status_code}: {r.text}")
+                print(
+                    f"[task] Warning: answerCallbackQuery failed {r.status_code}: {r.text}"
+                )
         except requests.RequestException as e:
             print(f"[task] Warning: could not answer callback query ({e})")
 
@@ -52,9 +56,13 @@ def send_telegram_message_task(
             edit_payload["chat_id"] = chat_id
             edit_payload["message_id"] = previous_message_id
         try:
-            r = requests.post(f"{api_url}/editMessageReplyMarkup", json=edit_payload, timeout=5)
+            r = requests.post(
+                f"{api_url}/editMessageReplyMarkup", json=edit_payload, timeout=5
+            )
             if not r.ok:
-                print(f"[task] Warning: editMessageReplyMarkup failed {r.status_code}: {r.text}")
+                print(
+                    f"[task] Warning: editMessageReplyMarkup failed {r.status_code}: {r.text}"
+                )
         except requests.RequestException as e:
             print(f"[task] Warning: could not edit reply markup ({e})")
 

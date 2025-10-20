@@ -296,7 +296,10 @@ class RegisterCommand(BaseCommand):
             set_step(fsm, msg.chat_id, CMD, S_ROLE, data)
             mark_prev_keyboard(data, msg)
             reply(
-                msg, prompt_for(S_ROLE), kb_back_cancel(kb_options(ROLES)["inline_keyboard"]), data=data
+                msg,
+                prompt_for(S_ROLE),
+                kb_back_cancel(kb_options(ROLES)["inline_keyboard"]),
+                data=data,
             )  # show role buttons
             return
 

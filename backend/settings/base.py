@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from dotenv import load_dotenv
+
 load_dotenv()  # Load .env file if present
 
 BASE_DIR = Path(__file__).resolve().parents[2]
@@ -25,7 +26,6 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    
     # Our apps and 3rd party
     "rest_framework",
     "backend.apps.users.apps.UsersConfig",
@@ -38,8 +38,7 @@ INSTALLED_APPS = [
     "backend.apps.audit.apps.AuditConfig",
     "backend.apps.telegram_bot.apps.TelegramBotConfig",
     "backend.apps.botutils.apps.BotutilsConfig",
-
-    "whitenoise.runserver_nostatic"
+    "whitenoise.runserver_nostatic",
 ]
 
 MIDDLEWARE = [
@@ -54,17 +53,21 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "backend.urls"
-TEMPLATES = [{
-    "BACKEND": "django.template.backends.django.DjangoTemplates",
-    "DIRS": [BASE_DIR / "templates"],
-    "APP_DIRS": True,
-    "OPTIONS": {"context_processors": [
-        "django.template.context_processors.debug",
-        "django.template.context_processors.request",
-        "django.contrib.auth.context_processors.auth",
-        "django.contrib.messages.context_processors.messages",
-    ]},
-}]
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.debug",
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ]
+        },
+    }
+]
 WSGI_APPLICATION = "backend.wsgi.application"
 
 # Postgres by default; override with docker/dev settings as needed
@@ -84,6 +87,7 @@ STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 DATABASE_URL = os.getenv("DATABASE_URL")
 if DATABASE_URL:
     from urllib.parse import urlparse
+
     parsed = urlparse(DATABASE_URL)
     DATABASES["default"].update(
         {

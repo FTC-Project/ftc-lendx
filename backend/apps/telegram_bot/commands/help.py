@@ -1,12 +1,17 @@
 from celery import shared_task
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.messages import TelegramMessage
+from backend.apps.telegram_bot.registry import register
 from backend.apps.telegram_bot.tasks import send_telegram_message_task
 
 
+@register(
+    name="help", aliases=["/help"], description="Help/Information", permission="public"
+)
 class HelpCommand(BaseCommand):
-    def __init__(self):
-        super().__init__(name="help", description="Show help information")
+    name = "help"
+    description = "Help/Information"
+    permission = "public"
 
     def handle(self, message: TelegramMessage) -> None:
         help_text = (

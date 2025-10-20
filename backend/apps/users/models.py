@@ -43,20 +43,6 @@ class Wallet(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
 
-class Transfer(models.Model):
-    STATUS = [("pending", "Pending"), ("validated", "Validated"), ("failed", "Failed")]
-    sender = models.ForeignKey(
-        TelegramUser, on_delete=models.SET_NULL, null=True, related_name="outgoing"
-    )
-    recipient = models.ForeignKey(
-        TelegramUser, on_delete=models.SET_NULL, null=True, related_name="incoming"
-    )
-    destination_address = models.CharField(max_length=64)
-    amount_drops = models.BigIntegerField()  # 1 XRP = 1,000,000 drops
-    tx_hash = models.CharField(max_length=128, null=True, blank=True, db_index=True)
-    status = models.CharField(max_length=16, choices=STATUS, default="pending")
-    created_at = models.DateTimeField(auto_now_add=True)
-
 
 class BotSession(models.Model):
     """Maintains conversation context across sessions (FR-7.6)."""

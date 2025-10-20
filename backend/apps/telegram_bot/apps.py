@@ -1,4 +1,6 @@
 from django.apps import AppConfig
+from django.conf import settings
+
 
 
 class TelegramBotConfig(AppConfig):
@@ -11,5 +13,7 @@ class TelegramBotConfig(AppConfig):
         Keep this for optional future hooks, like signal imports
         or automatic task registration (Celery autodiscovery).
         """
-        # from . import signals  # Only if you ever create one
-        pass
+        from backend.apps.telegram_bot import commands  # noqa: F401
+        from .bot import get_bot
+
+        get_bot()

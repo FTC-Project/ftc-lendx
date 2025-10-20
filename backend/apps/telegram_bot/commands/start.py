@@ -3,11 +3,19 @@ from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.tasks import send_telegram_message_task
 from backend.apps.users.models import TelegramUser
+from backend.apps.telegram_bot.registry import register
 
 
+@register(
+    name="start",
+    aliases=["/start"],
+    description="Welcome/Onboarding",
+    permission="public",
+)
 class StartCommand(BaseCommand):
-    def __init__(self):
-        super().__init__(name="help", description="Show help information")
+    name = "start"
+    description = "Welcome/Onboarding"
+    permission = "public"
 
     def handle(self, message: TelegramMessage) -> None:
         send_telegram_message_task.delay(message.chat_id, "Setting up your account...")
@@ -17,10 +25,6 @@ class StartCommand(BaseCommand):
     def task(message_data: dict) -> None:
         # Help doesn't need to use a worker since it's a flat response.
         msg = TelegramMessage.from_payload(message_data)
-        if not msg:
-            print("Invalid message data in start command")
-            return
-        print(f"Processing /start for user {msg.user_id}")
 
         try:
             user, created = TelegramUser.objects.get_or_create(

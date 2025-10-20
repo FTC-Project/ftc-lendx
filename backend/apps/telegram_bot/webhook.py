@@ -4,7 +4,7 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 
 from .messages import parse_telegram_message
-from .bot import bot
+from .bot import get_bot
 
 
 @csrf_exempt
@@ -20,8 +20,8 @@ def telegram_webhook(request):
         msg = parse_telegram_message(data)
 
         if msg:
-            print(f"[webhook] Received command '{msg.command}' from user {msg.user_id}")
-            bot.handle_message(msg)
+            print(f"[webhook] Received message from user {msg.user_id}")
+            get_bot().handle_message(msg)
         else:
             print("[webhook] Ignoring non-command payload")
 

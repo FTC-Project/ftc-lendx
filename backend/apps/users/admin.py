@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import TelegramUser, Wallet, Transfer, BotSession, Notification
+from .models import TelegramUser, Wallet, BotSession, Notification
+
 
 
 @admin.register(TelegramUser)
@@ -30,21 +31,6 @@ class WalletAdmin(admin.ModelAdmin):
     list_display = ("user", "network", "address", "funded_at", "created_at")
     search_fields = ("address", "user__username")
     list_filter = ("network",)
-
-
-@admin.register(Transfer)
-class TransferAdmin(admin.ModelAdmin):
-    list_display = (
-        "sender",
-        "recipient",
-        "destination_address",
-        "amount_drops",
-        "status",
-        "tx_hash",
-        "created_at",
-    )
-    list_filter = ("status",)
-    search_fields = ("tx_hash", "destination_address")
 
 
 @admin.register(BotSession)

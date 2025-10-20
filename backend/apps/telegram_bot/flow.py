@@ -39,9 +39,10 @@ def prev_step_of(
 
 def mark_prev_keyboard(data: dict, msg: TelegramMessage) -> None:
     """
-    Decide which previous bot message's inline keyboard to clear next:
-    - if callback → clear the tapped bot message (msg.message_id)
-    - else       → clear last prompt id stored in data['last_bot_message_id']
+    Mutates the input `data` dictionary by setting the 'prev_bot_message_id' key.
+    Decides which previous bot message's inline keyboard to clear next:
+    - If the message is a callback with a valid message_id, sets 'prev_bot_message_id' to msg.message_id.
+    - Otherwise, if 'last_bot_message_id' exists in data, sets 'prev_bot_message_id' to data['last_bot_message_id'].
     """
     if getattr(msg, "callback_query_id", None) and getattr(msg, "message_id", None):
         data["prev_bot_message_id"] = msg.message_id

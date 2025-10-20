@@ -1,5 +1,6 @@
 # backend/apps/telegram_bot/fsm_store.py
-import json, time
+import json
+import time
 from typing import Optional, Dict, Any
 from contextlib import contextmanager
 from redis import Redis

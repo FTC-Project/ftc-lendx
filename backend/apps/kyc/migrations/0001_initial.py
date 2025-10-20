@@ -10,31 +10,76 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('users', '0002_telegramuser_national_id_telegramuser_phone_e164_and_more'),
+        ("users", "0002_telegramuser_national_id_telegramuser_phone_e164_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='Document',
+            name="Document",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('kind', models.CharField(db_index=True, max_length=32)),
-                ('blob', models.BinaryField()),
-                ('mime_type', models.CharField(default='application/octet-stream', max_length=64)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='documents', to='users.telegramuser')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("kind", models.CharField(db_index=True, max_length=32)),
+                ("blob", models.BinaryField()),
+                (
+                    "mime_type",
+                    models.CharField(default="application/octet-stream", max_length=64),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="documents",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='KYCVerification',
+            name="KYCVerification",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('verified', 'Verified'), ('failed', 'Failed')], db_index=True, default='pending', max_length=16)),
-                ('confidence', models.FloatField(blank=True, null=True)),
-                ('result', models.JSONField(blank=True, default=dict)),
-                ('reviewed_at', models.DateTimeField(blank=True, null=True)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='kyc', to='users.telegramuser')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("verified", "Verified"),
+                            ("failed", "Failed"),
+                        ],
+                        db_index=True,
+                        default="pending",
+                        max_length=16,
+                    ),
+                ),
+                ("confidence", models.FloatField(blank=True, null=True)),
+                ("result", models.JSONField(blank=True, default=dict)),
+                ("reviewed_at", models.DateTimeField(blank=True, null=True)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="kyc",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
     ]

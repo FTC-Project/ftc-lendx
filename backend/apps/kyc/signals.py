@@ -4,6 +4,7 @@ from .models import KYCVerification
 from backend.apps.audit.models import DataAccessLog
 from backend.apps.users.models import Notification
 
+
 @receiver(pre_save, sender=KYCVerification, dispatch_uid="kyc_track_status_change")
 def kyc_track_status_change(sender, instance: KYCVerification, **kwargs):
     if not instance.pk:
@@ -11,6 +12,7 @@ def kyc_track_status_change(sender, instance: KYCVerification, **kwargs):
     else:
         old = KYCVerification.objects.get(pk=instance.pk)
         instance._old_status = old.status
+
 
 @receiver(post_save, sender=KYCVerification, dispatch_uid="kyc_on_verified")
 def kyc_on_verified(sender, instance: KYCVerification, **kwargs):
@@ -22,7 +24,5 @@ def kyc_on_verified(sender, instance: KYCVerification, **kwargs):
             action="update",
             context={"new_status": "verified"},
         )
-        Notification.objects.create(
-            user=instance.user, kind="kyc_verified", payload={}
-        )
+        Notification.objects.create(user=instance.user, kind="kyc_verified", payload={})
         # Optionally: advance bot state or unlock /linkbank

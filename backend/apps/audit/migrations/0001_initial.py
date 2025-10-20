@@ -10,31 +10,74 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('users', '0002_telegramuser_national_id_telegramuser_phone_e164_and_more'),
+        ("users", "0002_telegramuser_national_id_telegramuser_phone_e164_and_more"),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='DataAccessLog',
+            name="DataAccessLog",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('actor', models.CharField(db_index=True, max_length=64)),
-                ('resource', models.CharField(db_index=True, max_length=64)),
-                ('action', models.CharField(db_index=True, max_length=32)),
-                ('context', models.JSONField(blank=True, default=dict)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='data_access_logs', to='users.telegramuser')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("actor", models.CharField(db_index=True, max_length=64)),
+                ("resource", models.CharField(db_index=True, max_length=64)),
+                ("action", models.CharField(db_index=True, max_length=32)),
+                ("context", models.JSONField(blank=True, default=dict)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        null=True,
+                        on_delete=django.db.models.deletion.SET_NULL,
+                        related_name="data_access_logs",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='ErasureRequest',
+            name="ErasureRequest",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('status', models.CharField(choices=[('pending', 'Pending'), ('processed', 'Processed'), ('denied', 'Denied')], db_index=True, default='pending', max_length=16)),
-                ('processed_at', models.DateTimeField(blank=True, null=True)),
-                ('notes', models.TextField(blank=True, default='')),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='erasure_requests', to='users.telegramuser')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "Pending"),
+                            ("processed", "Processed"),
+                            ("denied", "Denied"),
+                        ],
+                        db_index=True,
+                        default="pending",
+                        max_length=16,
+                    ),
+                ),
+                ("processed_at", models.DateTimeField(blank=True, null=True)),
+                ("notes", models.TextField(blank=True, default="")),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="erasure_requests",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
         ),
     ]

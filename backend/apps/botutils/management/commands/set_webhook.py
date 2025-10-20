@@ -4,6 +4,7 @@ import json
 import requests
 from django.core.management.base import BaseCommand, CommandError
 
+
 class Command(BaseCommand):
     help = "Manage Telegram webhook: set, get, or drop."
 
@@ -12,7 +13,7 @@ class Command(BaseCommand):
             "--url",
             dest="url",
             help="Public HTTPS endpoint for Telegram to call (e.g., https://<host>/webhook/telegram/). "
-                 "If omitted, will try PUBLIC_URL env + '/webhook/telegram/'."
+            "If omitted, will try PUBLIC_URL env + '/webhook/telegram/'.",
         )
         parser.add_argument(
             "--secret",
@@ -20,14 +21,10 @@ class Command(BaseCommand):
             help="Optional secret token to verify Telegram requests (X-Telegram-Bot-Api-Secret-Token).",
         )
         parser.add_argument(
-            "--get",
-            action="store_true",
-            help="Get current webhook info."
+            "--get", action="store_true", help="Get current webhook info."
         )
         parser.add_argument(
-            "--drop",
-            action="store_true",
-            help="Delete current webhook (set to empty)."
+            "--drop", action="store_true", help="Delete current webhook (set to empty)."
         )
 
     def handle(self, *args, **options):

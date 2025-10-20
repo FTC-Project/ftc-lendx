@@ -1,7 +1,7 @@
 import os
 from typing import Dict, Optional
 
-import requests
+from functools import lru_cache
 
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.commands.balance import BalanceCommand
@@ -13,18 +13,15 @@ from backend.apps.telegram_bot.commands.wallet import WalletCommand
 
 from .messages import TelegramMessage
 
-TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")
-API_ROOT = os.environ.get("TELEGRAM_API_ROOT", "https://api.telegram.org")
-API_URL = f"{API_ROOT}/bot{TOKEN}"
+
 
 
 
 class TelegramBot:
     """Dispatch Telegram commands and talk to the Bot API."""
     def __init__(self, token: Optional[str] = None):
-        self.token = token or TOKEN
-        self.api_url = f"{API_ROOT}/bot{self.token}"
-        print(f"[bot] Initialized with API {self.api_url[:50]}...") #convert to logger later TODO
+        self.token = token or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+        self.api_url = f"https://api.telegram.org/bot{self.token}"
         self.commands: Dict[str, BaseCommand] = {
         "help": HelpCommand(),
         "wallet": WalletCommand(),
@@ -51,5 +48,7 @@ class TelegramBot:
             # Just chill
 
 
-# Global bot instance used across modules
-bot = TelegramBot()
+@lru_cache(maxsize=1)
+def get_bot(token: Optional[str] = None) -> TelegramBot:
+    """Return a singleton TelegramBot instance."""
+    return TelegramBot(token)

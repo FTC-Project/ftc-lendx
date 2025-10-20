@@ -7,8 +7,9 @@ from backend.apps.telegram_bot.tasks import send_telegram_message_task
 
 @register(name="help", aliases=["/help"], description="Help/Information", permission="public")
 class HelpCommand(BaseCommand):
-    def __init__(self):
-        super().__init__(name="help", description="Show help information")
+    name = "help"
+    description = "Help/Information"
+    permission = "public"
 
     def handle(self, message: TelegramMessage) -> None:
         help_text = (

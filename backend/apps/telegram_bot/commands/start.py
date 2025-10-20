@@ -21,10 +21,6 @@ class StartCommand(BaseCommand):
     def task(message_data: dict) -> None:
         # Help doesn't need to use a worker since it's a flat response.
         msg = TelegramMessage.from_payload(message_data)
-        if not msg:
-            print("Invalid message data in start command")
-            return
-        print(f"Processing /start for user {msg.user_id}")
 
         try:
             user, created = TelegramUser.objects.get_or_create(

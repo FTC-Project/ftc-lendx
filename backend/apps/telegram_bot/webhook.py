@@ -20,7 +20,7 @@ def telegram_webhook(request):
         msg = parse_telegram_message(data)
 
         if msg:
-            print(f"[webhook] Received command '{msg.command}' from user {msg.user_id}")
+            print(f"[webhook] Received message from user {msg.user_id}")
             get_bot().handle_message(msg)
         else:
             print("[webhook] Ignoring non-command payload")

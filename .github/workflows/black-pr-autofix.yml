@@ -16,9 +16,6 @@ jobs:
   black:
     runs-on: ubuntu-latest
 
-    # Don't run on PRs from forks, as we can't push to them
-    if: github.event.pull_request.head.repo.full_name == github.repository
-
     steps:
       - name: Filter to Python file changes
         id: filter
@@ -37,6 +34,9 @@ jobs:
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
+          # IMPORTANT: full history so we can push cleanly
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -46,12 +46,7 @@ jobs:
       - name: Install Black
         run: pip install black==24.8.0
 
-      # This is the new step to add
-      - name: Configure Git
-        run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-
+      # ---- Path A: same-repo PRs -> auto-fix and commit to the PR branch ----
       - name: Run Black (apply fixes)
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: black .
@@ -62,13 +57,25 @@ jobs:
           git status
           git --no-pager diff --name-only
 
-      - name: Commit Black changes to PR
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "chore(black): auto-format Python files"
-          file_pattern: "**/*.py"
-          skip_fetch: true
-          skip_checkout: true
+      - name: Commit + push Black changes (manual)
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        env:
+          GIT_AUTHOR_NAME: github-actions[bot]
+          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+          GIT_COMMITTER_NAME: github-actions[bot]
+          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
+        run: |
+          set -e
+          # stage only Python files (matches your intent)
+          git add **/*.py
+          # commit if there is anything to commit
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(black): auto-format Python files"
+            # push back to the PR branch (checkout already points to head repo/ref)
+            git push
+          else
+            echo "No staged Python changes; nothing to commit."
+          fi
 
       # ---- Path B: forked PRs -> check-only (no write) ----
       - name: Run Black (check only)

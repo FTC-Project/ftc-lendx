@@ -3,7 +3,7 @@ from __future__ import annotations
 import mimetypes
 import os
 import re
-from typing import Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 import requests
 from celery import shared_task
@@ -62,7 +62,7 @@ _re_sa_id = re.compile(r"^\d{13}$")  # SA ID: 13 digits
 _re_phone = re.compile(r"^\+27\d{9}$")  # SA Phone: +27XXXXXXXXX
 
 
-def prompt_for(step: str, old_value: Optional[Dict[str, any]]) -> str:
+def prompt_for(step: str, old_value: Optional[Dict[str, Any]]) -> str:
     def safe(val):
         return None if val is None or val == "None" or val == '' else val
 

@@ -6,7 +6,6 @@ on:
 
 permissions:
   contents: write
-  contents: write
   pull-requests: write
 
 concurrency:

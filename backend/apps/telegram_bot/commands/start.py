@@ -62,9 +62,9 @@ class StartCommand(BaseCommand):
                 "Welcome to Nkadime! 🌟\n\n"
                 "We help you access affordable credit using your banking data.\n"
                 "All loans are in FTCoin (FTC), our stable digital currency.\n"
-                "1 FTC = 1 ZAR always.\n" \
-                "" \
-                "Before we get started, you'll need to accept our Terms of Service. <TOS link goes here>.\n" \
+                "1 FTC = 1 ZAR always.\n"
+                ""
+                "Before we get started, you'll need to accept our Terms of Service. <TOS link goes here>.\n"
                 "Do you accept the Terms of Service?"
             )
             # Ask ToS

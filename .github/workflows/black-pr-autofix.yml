@@ -51,31 +51,11 @@ jobs:
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: black .
 
-      - name: Show changes after Black
+      - name: Commit and push changes
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        run: |
-          git status
-          git --no-pager diff --name-only
-
-      - name: Commit + push Black changes (manual)
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
-        env:
-          GIT_AUTHOR_NAME: github-actions[bot]
-          GIT_AUTHOR_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-          GIT_COMMITTER_NAME: github-actions[bot]
-          GIT_COMMITTER_EMAIL: 41898282+github-actions[bot]@users.noreply.github.com
-        run: |
-          set -e
-          # stage only Python files (matches your intent)
-          git add **/*.py
-          # commit if there is anything to commit
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(black): auto-format Python files"
-            # push back to the PR branch (checkout already points to head repo/ref)
-            git push
-          else
-            echo "No staged Python changes; nothing to commit."
-          fi
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(black): auto-format Python files"
 
       # ---- Path B: forked PRs -> check-only (no write) ----
       - name: Run Black (check only)

@@ -24,3 +24,13 @@ def kb_options(pairs: Iterable[Tuple[str, str]]) -> dict:
 
 def kb_confirm() -> dict:
     return kb_back_cancel([[{"text": "✅ Confirm", "callback_data": "flow:confirm"}]])
+
+def kb_accept_decline() -> dict:
+    return {
+        "inline_keyboard": [
+            [
+                {"text": "✅ Accept", "callback_data": "flow:accept"},
+                {"text": "❌ Decline", "callback_data": "flow:decline"},
+            ]
+        ]
+    }

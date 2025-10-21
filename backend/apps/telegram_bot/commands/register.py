@@ -135,7 +135,9 @@ def download_telegram_file(file_id: str) -> Tuple[bytes, str]:
     """
     Resolve a Telegram file_id to bytes + best-effort mime type.
     """
-    token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
+    token = os.environ.get("TELEGRAM_BOT_TOKEN")
+    if not token:
+        raise RuntimeError("TELEGRAM_BOT_TOKEN environment variable is not set.")
     api_root = "https://api.telegram.org"
     api_url = f"{api_root}/bot{token}"
 

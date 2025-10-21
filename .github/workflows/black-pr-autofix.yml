@@ -5,7 +5,7 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
-  contents: write         # needed to push a commit to the PR branch
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -15,6 +15,9 @@ concurrency:
 jobs:
   black:
     runs-on: ubuntu-latest
+
+    # Don't run on PRs from forks, as we can't push to them
+    if: github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - name: Filter to Python file changes
@@ -34,7 +37,6 @@ jobs:
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           ref: ${{ github.event.pull_request.head.ref }}
-          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -44,19 +46,17 @@ jobs:
       - name: Install Black
         run: pip install black==24.8.0
 
-      # ---- Path A: same-repo PRs -> auto-fix and commit to the PR branch ----
+      # This is the new step to add
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Run Black (apply fixes)
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: black .
 
       - name: Commit Black changes to PR
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(black): auto-format Python files"
           file_pattern: "**/*.py"
-
-      # ---- Path B: forked PRs -> check-only (no write) ----
-      - name: Run Black (check only)
-        if: ${{ github.event.pull_request.head.repo.full_name != github.repository }}
-        run: black --check .

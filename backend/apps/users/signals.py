@@ -9,5 +9,4 @@ from backend.apps.kyc.models import KYCVerification
 def create_related_objects(sender, instance, created, **kwargs):
     if created:
         # Create a KYC Verification Object
-        KYCVerification.objects.create(user=instance, status='pending')
-        
+        KYCVerification.objects.create(user=instance, status="pending")

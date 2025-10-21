@@ -3,9 +3,13 @@ from __future__ import annotations
 from typing import Dict, Optional
 from celery import shared_task
 
+from backend.apps.telegram_bot.commands.help import HelpCommand
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.flow import (
-    start_flow, clear_flow, mark_prev_keyboard, reply
+    start_flow,
+    clear_flow,
+    mark_prev_keyboard,
+    reply,
 )
 from backend.apps.telegram_bot.fsm_store import FSMStore
 from backend.apps.telegram_bot.messages import TelegramMessage
@@ -22,12 +26,6 @@ S_TOS = "awaiting_accept_TOS"
 PREV: Dict[str, Optional[str]] = {
     S_TOS: None,
 }
-
-
-def help_blurb() -> str:
-    return (
-        "Will be real soon: Use /help to see available commands and get started!"
-    )
 
 
 @register(
@@ -51,7 +49,8 @@ class StartCommand(BaseCommand):
         state = fsm.get(msg.chat_id)
 
         # If already signed up, short-circuit
-        if TelegramUser.objects.filter(telegram_id=msg.user_id).exists():
+        user = TelegramUser.objects.filter(telegram_id=msg.user_id).first()
+        if user and user.is_active:
             clear_flow(fsm, msg.chat_id)
             reply(msg, "You're already signed up. Use /help to see commands.")
             return
@@ -62,9 +61,9 @@ class StartCommand(BaseCommand):
                 "Welcome to Nkadime! 🌟\n\n"
                 "We help you access affordable credit using your banking data.\n"
                 "All loans are in FTCoin (FTC), our stable digital currency.\n"
-                "1 FTC = 1 ZAR always.\n" \
-                "" \
-                "Before we get started, you'll need to accept our Terms of Service. <TOS link goes here>.\n" \
+                "1 FTC = 1 ZAR always.\n"
+                ""
+                "Before we get started, you'll need to accept our Terms of Service. <TOS link goes here>.\n"
                 "Do you accept the Terms of Service?"
             )
             # Ask ToS
@@ -108,9 +107,11 @@ class StartCommand(BaseCommand):
                 # Confirm + show quick help
                 reply(
                     msg,
-                    "✅ Thanks for accepting the Terms of Service. Your account has been created!\n\n"
-                    + help_blurb(), data=data
+                    "✅ Thanks for accepting the Terms of Service. Your account has been created!\n\n",
+                    data=data,
                 )
+                # Can we show help right away, the help command exists so why not
+                HelpCommand().handle(msg)
                 return
 
             if cb == "flow:decline":
@@ -120,7 +121,7 @@ class StartCommand(BaseCommand):
                 reply(
                     msg,
                     "❌ You declined the Terms of Service. We can't proceed without acceptance.\n"
-                    "If you change your mind, run /start again."
+                    "If you change your mind, run /start again.",
                 )
                 return
 

@@ -20,6 +20,7 @@ class TelegramUser(models.Model):
     role = models.CharField(max_length=16, choices=ROLE_CHOICES, default="borrower")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    is_registered = models.BooleanField(default=False)
 
     def display_name(self):
         return (
@@ -41,7 +42,6 @@ class Wallet(models.Model):
     secret_encrypted = models.BinaryField()  # Fernet/AES
     funded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-
 
 
 class BotSession(models.Model):

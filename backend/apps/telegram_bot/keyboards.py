@@ -35,3 +35,44 @@ def kb_accept_decline() -> dict:
             ]
         ]
     }
+
+
+def kb_perms_continue(continue_callback: str) -> dict:
+    """Keyboard with a 'Continue' button, and back/cancel."""
+    return kb_back_cancel([[{"text": "Continue", "callback_data": continue_callback}]])
+
+
+def kb_open_bank(url: str, authed_callback: str) -> dict:
+    """Keyboard to open a bank URL and confirm authorisation."""
+    return kb_back_cancel(
+        [
+            [{"text": "🌐 Open Bank Page", "url": url}],
+            [{"text": "✅ I've authorised", "callback_data": authed_callback}],
+        ]
+    )
+
+
+def kb_retry_authorise(url: str, authed_callback: str, retry_callback: str) -> dict:
+    """Keyboard to retry opening a bank URL and confirm authorisation."""
+    return kb_back_cancel(
+        [
+            [{"text": "🌐 Open Bank Page (again)", "url": url}],
+            [
+                {"text": "✅ I've authorised", "callback_data": authed_callback},
+                {"text": "🔄 Check again", "callback_data": retry_callback},
+            ],
+        ]
+    )
+
+
+def kb_accounts(accts: List[Dict], callback_prefix: str) -> dict:
+    """Keyboard to select a bank account from a list."""
+    rows = []
+    for a in accts:
+        label = (
+            f"{a.get('name','Account')} • {a.get('type','')} • {a.get('currency','')}"
+        )
+        rows.append(
+            [{"text": label, "callback_data": f"{callback_prefix}{a.get('id')}"}]
+        )
+    return kb_back_cancel(rows)

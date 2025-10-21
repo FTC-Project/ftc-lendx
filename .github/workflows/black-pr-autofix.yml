@@ -5,7 +5,7 @@ on:
     types: [opened, reopened, synchronize, ready_for_review]
 
 permissions:
-  contents: write         # needed to push a commit to the PR branch
+  contents: write
   pull-requests: write
 
 concurrency:
@@ -49,12 +49,20 @@ jobs:
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         run: black .
 
+      - name: Show changes after Black
+        if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          git status
+          git --no-pager diff --name-only
+
       - name: Commit Black changes to PR
         if: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
           commit_message: "chore(black): auto-format Python files"
           file_pattern: "**/*.py"
+          skip_fetch: true
+          skip_checkout: true
 
       # ---- Path B: forked PRs -> check-only (no write) ----
       - name: Run Black (check only)

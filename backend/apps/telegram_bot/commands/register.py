@@ -141,24 +141,26 @@ def download_telegram_file(file_id: str) -> Tuple[bytes, str]:
     api_root = "https://api.telegram.org"
     api_url = f"{api_root}/bot{token}"
 
-    # Step 1: getFile -> path
-    r = requests.get(f"{api_url}/getFile", params={"file_id": file_id}, timeout=10)
-    r.raise_for_status()
-    file_path = r.json()["result"]["file_path"]
+    try:
+        # Step 1: getFile -> path
+        r = requests.get(f"{api_url}/getFile", params={"file_id": file_id}, timeout=10)
+        r.raise_for_status()
+        file_path = r.json()["result"]["file_path"]
 
-    # Step 2: download the file
-    file_url = f"{api_root}/file/bot{token}/{file_path}"
-    f = requests.get(file_url, timeout=20)
-    f.raise_for_status()
-    blob = f.content
+        # Step 2: download the file
+        file_url = f"{api_root}/file/bot{token}/{file_path}"
+        f = requests.get(file_url, timeout=20)
+        f.raise_for_status()
+        blob = f.content
 
-    # Guess mime from extension if we can
-    mime, _ = mimetypes.guess_type(file_path)
-    if not mime:
-        mime = "application/octet-stream"
-    return blob, mime
-
-
+        # Guess mime from extension if we can
+        mime, _ = mimetypes.guess_type(file_path)
+        if not mime:
+            mime = "application/octet-stream"
+        return blob, mime
+    except requests.RequestException as e:
+        # Handle network errors specifically
+        raise RuntimeError(f"Network error while downloading file from Telegram: {e}") from e
 @register(
     name=CMD,
     aliases=[f"/{CMD}"],

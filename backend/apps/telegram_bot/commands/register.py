@@ -64,7 +64,7 @@ _re_phone = re.compile(r"^\+27\d{9}$")  # SA Phone: +27XXXXXXXXX
 
 def prompt_for(step: str, old_value: Optional[Dict[str, Any]]) -> str:
     def safe(val):
-        return None if val is None or val == "None" or val == '' else val
+        return None if val is None or val == "None" or val == "" else val
 
     prompts = {
         S_FIRST: "Welcome! Can you confirm your first name?",
@@ -81,27 +81,37 @@ def prompt_for(step: str, old_value: Optional[Dict[str, Any]]) -> str:
     }
 
     if step == S_FIRST:
-        val = safe(old_value.get('first_name', '') if old_value else None)
+        val = safe(old_value.get("first_name", "") if old_value else None)
         if val:
-            prompts[S_FIRST] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            prompts[
+                S_FIRST
+            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
     elif step == S_LAST:
-        first = safe(old_value.get('first_name', '') if old_value else None)
+        first = safe(old_value.get("first_name", "") if old_value else None)
         prompts[S_LAST] = f"Thanks {first or ''}! Now can you confirm your last name?"
-        val = safe(old_value.get('last_name', '') if old_value else None)
+        val = safe(old_value.get("last_name", "") if old_value else None)
         if val:
-            prompts[S_LAST] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            prompts[
+                S_LAST
+            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
     elif step == S_PHONE:
-        val = safe(old_value.get('phone_e164', '') if old_value else None)
+        val = safe(old_value.get("phone_e164", "") if old_value else None)
         if val:
-            prompts[S_PHONE] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            prompts[
+                S_PHONE
+            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
     elif step == S_NATID:
-        val = safe(old_value.get('national_id', '') if old_value else None)
+        val = safe(old_value.get("national_id", "") if old_value else None)
         if val:
-            prompts[S_NATID] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            prompts[
+                S_NATID
+            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
     elif step == S_ROLE:
-        val = safe(old_value.get('role', '') if old_value else None)
+        val = safe(old_value.get("role", "") if old_value else None)
         if val:
-            prompts[S_ROLE] += f"\nWe think it's: {val.capitalize()}. \nIf this is correct, press the button with the checkmark (✅) next to it or select a new role."
+            prompts[
+                S_ROLE
+            ] += f"\nWe think it's: {val.capitalize()}. \nIf this is correct, press the button with the checkmark (✅) next to it or select a new role."
 
     return prompts[step]
 
@@ -160,7 +170,11 @@ def download_telegram_file(file_id: str) -> Tuple[bytes, str]:
         return blob, mime
     except requests.RequestException as e:
         # Handle network errors specifically
-        raise RuntimeError(f"Network error while downloading file from Telegram: {e}") from e
+        raise RuntimeError(
+            f"Network error while downloading file from Telegram: {e}"
+        ) from e
+
+
 @register(
     name=CMD,
     aliases=[f"/{CMD}"],
@@ -374,7 +388,10 @@ class RegisterCommand(BaseCommand):
             if not text:
                 mark_prev_keyboard(data, msg)
                 reply(
-                    msg, "Please enter a valid first name or 'yes' if we have the right name on file.", kb_back_cancel(), data=data
+                    msg,
+                    "Please enter a valid first name or 'yes' if we have the right name on file.",
+                    kb_back_cancel(),
+                    data=data,
                 )
                 return
             if not text.lower() == "yes":
@@ -389,7 +406,10 @@ class RegisterCommand(BaseCommand):
             if not text:
                 mark_prev_keyboard(data, msg)
                 reply(
-                    msg, "Please enter a valid last name or 'yes' if we have the right name on file.", kb_back_cancel(), data=data
+                    msg,
+                    "Please enter a valid last name or 'yes' if we have the right name on file.",
+                    kb_back_cancel(),
+                    data=data,
                 )
                 return
             if not text.lower() == "yes":
@@ -399,7 +419,7 @@ class RegisterCommand(BaseCommand):
             mark_prev_keyboard(data, msg)
             reply(msg, prompt_for(S_PHONE, data), kb_back_cancel(), data=data)
             return
-        
+
         if step == S_PHONE:
             is_yes = text.lower() == "yes"
             current_phone = data.get("phone_e164", "")
@@ -441,7 +461,12 @@ class RegisterCommand(BaseCommand):
 
             set_step(fsm, msg.chat_id, CMD, S_ROLE, data)
             mark_prev_keyboard(data, msg)
-            reply(msg, prompt_for(S_ROLE, data), role_keyboard(data.get("role")), data=data)
+            reply(
+                msg,
+                prompt_for(S_ROLE, data),
+                role_keyboard(data.get("role")),
+                data=data,
+            )
             return
 
         if step == S_ROLE:
@@ -474,9 +499,7 @@ class RegisterCommand(BaseCommand):
                 blob, mime = download_telegram_file(file_id)
                 # We don't have a TelegramUser yet; create a minimal placeholder for storing Document,
                 # or use a temp approach: in this POC, we can upsert user here with basic info (first/last/id).
-                user, _ = TelegramUser.objects.get(
-                    telegram_id=msg.user_id
-                )
+                user, _ = TelegramUser.objects.get(telegram_id=msg.user_id)
                 # Store/replace the 'id_front' doc (idempotent-ish)
                 # If you want strict idempotency, you can upsert by kind:
                 existing = user.documents.filter(kind="id_front").first()

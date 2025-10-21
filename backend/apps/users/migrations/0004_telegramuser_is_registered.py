@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0003_delete_transfer'),
+        ("users", "0003_delete_transfer"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='telegramuser',
-            name='is_registered',
+            model_name="telegramuser",
+            name="is_registered",
             field=models.BooleanField(default=False),
         ),
     ]

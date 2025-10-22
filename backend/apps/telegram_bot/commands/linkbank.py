@@ -74,11 +74,13 @@ DEFAULT_PERMISSIONS = [
 
 # ====== Text Helpers ======
 
+
 def t_guard_fail(reason: str) -> str:
     return (
         "❌ You can't link a bank account yet.\n\n"
         f"{reason}\n\nTry /register first (complete KYC), or /help."
     )
+
 
 def t_perms_intro() -> str:
     return (
@@ -90,11 +92,13 @@ def t_perms_intro() -> str:
         "_You can revoke this any time in your bank portal._"
     )
 
+
 def t_open_ui() -> str:
     return (
         "✅ Consent created.\n\n"
         "Tap below to open your bank's authorisation page, sign in, and approve access."
     )
+
 
 def t_wait_auth() -> str:
     return (
@@ -102,8 +106,10 @@ def t_wait_auth() -> str:
         "or *Check again* to refresh the status."
     )
 
+
 def t_pick_account() -> str:
     return "👍 Authorisation confirmed.\n\nSelect the account you want to link:"
+
 
 def t_done() -> str:
     return (
@@ -112,14 +118,17 @@ def t_done() -> str:
         "Next: /apply for a loan, or check /help."
     )
 
+
 def t_error(e: Exception) -> str:
     return f"Could not proceed. Please try again later.\n\n_error:_ `{e}`"
+
 
 def t_auth_error(e: Exception) -> str:
     return f"Could not confirm bank authorisation yet. You can retry.\n\n_error:_ `{e}`"
 
 
 # ====== Persistence & Domain Helpers ======
+
 
 def save_oauth_token(user: TelegramUser, token_doc: Dict) -> OAuthToken:
     """Persist encrypted OAuth tokens with expiry & scope."""
@@ -138,6 +147,7 @@ def save_oauth_token(user: TelegramUser, token_doc: Dict) -> OAuthToken:
         },
     )[0]
 
+
 def save_consent(user: TelegramUser, consent_doc: Dict) -> BankConsent:
     """Persist a normalized view of the granted consent."""
     status = consent_doc.get("Status")
@@ -145,7 +155,8 @@ def save_consent(user: TelegramUser, consent_doc: Dict) -> BankConsent:
     return BankConsent.objects.create(
         user=user,
         permissions=consent_doc.get("Permissions") or [],
-        granted_at=parse_datetime(consent_doc.get("CreationDateTime")) or timezone.now(),
+        granted_at=parse_datetime(consent_doc.get("CreationDateTime"))
+        or timezone.now(),
         expires_at=parse_datetime(consent_doc.get("ExpirationDateTime"))
         or (timezone.now() + timezone.timedelta(days=90)),
         status=normalized_status,
@@ -155,6 +166,7 @@ def save_consent(user: TelegramUser, consent_doc: Dict) -> BankConsent:
             "ConsentId": consent_doc.get("ConsentId"),
         },
     )
+
 
 def update_consent_status(consent_pk: str, consent_doc: Dict) -> None:
     """Update persisted consent status & metadata (best effort)."""
@@ -176,6 +188,7 @@ def update_consent_status(consent_pk: str, consent_doc: Dict) -> None:
         bc.meta = meta
         bc.save(update_fields=["status", "meta"])
 
+
 def save_bank_account(user: TelegramUser, acct: Dict) -> BankAccount:
     """Create a BankAccount record for the selected account."""
     ext_id = acct.get("id") or ""
@@ -187,6 +200,7 @@ def save_bank_account(user: TelegramUser, acct: Dict) -> BankAccount:
         currency=(acct.get("currency") or "ZAR")[:8],
     )
 
+
 def normalize_accounts(payload: Any) -> List[Dict]:
     """Accepts either {data:[...]} or [...] and returns a list of account dicts."""
     if isinstance(payload, dict):
@@ -194,6 +208,7 @@ def normalize_accounts(payload: Any) -> List[Dict]:
     if isinstance(payload, list):
         return [a for a in payload if isinstance(a, dict)]
     return []
+
 
 def get_user_guarded(telegram_id: int) -> Tuple[Optional[TelegramUser], Optional[str]]:
     """Fetch user and ensure borrower role + verified KYC; returns (user, error_msg)."""
@@ -208,8 +223,11 @@ def get_user_guarded(telegram_id: int) -> Tuple[Optional[TelegramUser], Optional
     except KYCVerification.DoesNotExist:
         return None, t_guard_fail("No verified profile found.")
     if kyc.status != "verified":
-        return None, t_guard_fail("KYC not verified yet. Please complete /register first.")
+        return None, t_guard_fail(
+            "KYC not verified yet. Please complete /register first."
+        )
     return user, None
+
 
 def make_ui_url(client: AISClient, data: Dict) -> str:
     """Build PSU UI URL from stored flow data."""
@@ -219,6 +237,7 @@ def make_ui_url(client: AISClient, data: Dict) -> str:
         data.get("redirect_uri", ""),
     )
 
+
 def pick_account_from_callback(cb: str) -> Optional[str]:
     """Extract account id from a callback like 'lb:acct:<id>'."""
     if cb and cb.startswith(CB_PICK_ACCT):
@@ -227,6 +246,7 @@ def pick_account_from_callback(cb: str) -> Optional[str]:
 
 
 # ====== Step Handlers ======
+
 
 def handle_start(msg: TelegramMessage, fsm: FSMStore) -> None:
     """Guards and starts the bank linking flow."""
@@ -240,9 +260,11 @@ def handle_start(msg: TelegramMessage, fsm: FSMStore) -> None:
     mark_prev_keyboard(data, msg)
     reply(msg, t_perms_intro(), kb_perms_continue(CB_PERMS_OK), data=data)
 
+
 def handle_cancel(msg: TelegramMessage, fsm: FSMStore) -> None:
     clear_flow(fsm, msg.chat_id)
     reply(msg, "Cancelled bank linking. You can try again with /linkbank.")
+
 
 def handle_back(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     step = state.get("step")
@@ -264,10 +286,16 @@ def handle_back(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     elif prev == S_OPEN_UI:
         reply(msg, t_open_ui(), kb_open_bank(ui_url, CB_AUTHED), data=data)
     elif prev == S_WAIT_AUTH:
-        reply(msg, t_wait_auth(), kb_retry_authorise(ui_url, CB_AUTHED, CB_RETRY_AUTH), data=data)
+        reply(
+            msg,
+            t_wait_auth(),
+            kb_retry_authorise(ui_url, CB_AUTHED, CB_RETRY_AUTH),
+            data=data,
+        )
     elif prev == S_PICK_ACCT:
         accounts = normalize_accounts(data.get("accounts", []))
         reply(msg, t_pick_account(), kb_accounts(accounts, CB_PICK_ACCT), data=data)
+
 
 def handle_permissions(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     """Create initial client token and a consent, then push user to PSU UI."""
@@ -312,6 +340,7 @@ def handle_permissions(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None
     except Exception as e:
         reply(msg, t_error(e), kb_back_cancel(), data=data)
 
+
 def handle_authorisation(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     """Confirm PSU authorisation, mint consent-scoped token, and list accounts."""
     data = state.get("data", {})
@@ -346,7 +375,12 @@ def handle_authorisation(msg: TelegramMessage, fsm: FSMStore, state: dict) -> No
 
         if status != "Authorised":
             set_step(fsm, msg.chat_id, CMD, S_WAIT_AUTH, data)
-            reply(msg, t_wait_auth(), kb_retry_authorise(ui_url, CB_AUTHED, CB_RETRY_AUTH), data=data)
+            reply(
+                msg,
+                t_wait_auth(),
+                kb_retry_authorise(ui_url, CB_AUTHED, CB_RETRY_AUTH),
+                data=data,
+            )
             return
 
         # 2) Mint consent-bound token
@@ -367,7 +401,13 @@ def handle_authorisation(msg: TelegramMessage, fsm: FSMStore, state: dict) -> No
 
     except Exception as e:
         set_step(fsm, msg.chat_id, CMD, S_WAIT_AUTH, data)
-        reply(msg, t_auth_error(e), kb_retry_authorise(ui_url, CB_AUTHED, CB_RETRY_AUTH), data=data)
+        reply(
+            msg,
+            t_auth_error(e),
+            kb_retry_authorise(ui_url, CB_AUTHED, CB_RETRY_AUTH),
+            data=data,
+        )
+
 
 def handle_pick_account(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     """Persist selected account and kick off scoring."""
@@ -388,7 +428,7 @@ def handle_pick_account(msg: TelegramMessage, fsm: FSMStore, state: dict) -> Non
         bank_account = save_bank_account(user, acct)
         data["linked_account_id"] = acct_id
 
-       # start_scoring_pipeline.delay(user.id, bank_account.id) TODO: Uncomment when ready
+        # start_scoring_pipeline.delay(user.id, bank_account.id) TODO: Uncomment when ready
 
         set_step(fsm, msg.chat_id, CMD, S_DONE, data)
         reply(msg, t_done(), data=data)
@@ -397,12 +437,14 @@ def handle_pick_account(msg: TelegramMessage, fsm: FSMStore, state: dict) -> Non
     # Re-render accounts if user typed text
     reply(msg, t_pick_account(), kb_accounts(accounts, CB_PICK_ACCT), data=data)
 
+
 def handle_done(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     clear_flow(fsm, msg.chat_id)
     reply(msg, "All set. Use /apply to request a loan, or /help.")
 
 
 # ====== Command ======
+
 
 @register(
     name=CMD,

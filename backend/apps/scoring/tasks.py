@@ -32,7 +32,8 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
 
         client = AISClient()
         transactions_data = client.list_transactions_all(
-            access_token=access_token, from_date="1900-01-01", to_date="2100-12-31")
+            access_token=access_token, from_date="1900-01-01", to_date="2100-12-31"
+        )
         # TODO: Actually implement this kak.
 
         for tx in transactions_data:

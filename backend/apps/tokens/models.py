@@ -37,4 +37,3 @@ class TokenEvent(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["user", "kind", "created_at"])]
-

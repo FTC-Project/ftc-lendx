@@ -100,9 +100,7 @@ def calculate_transaction_volume(transactions, time_window=6):
         apply_func="count",
         recency=time_window,
     )
-    average_volume = transactions_grouped.groupby("transaction_direction")[
-        "id"
-    ].mean()
+    average_volume = transactions_grouped.groupby("transaction_direction")["id"].mean()
 
     return (
         average_volume.get("Incoming", 0),
@@ -123,11 +121,7 @@ def calculate_transaction_frequency(transactions, time_window=6):
         ]
 
     df = transactions.sort_values(by=["date"])
-    df["days_since_last"] = (
-        df.groupby(["transaction_direction"])["date"]
-        .diff()
-        .dt.days
-    )
+    df["days_since_last"] = df.groupby(["transaction_direction"])["date"].diff().dt.days
     transaction_frequency = df.groupby(["transaction_direction"])[
         "days_since_last"
     ].mean()

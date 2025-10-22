@@ -31,7 +31,9 @@ def calculate_apr(token_tier):
     return apr
 
 
-def calculate_credit_limit(transactions: pd.DataFrame, trust_score: float, token_tier: str):
+def calculate_credit_limit(
+    transactions: pd.DataFrame, trust_score: float, token_tier: str
+):
     """Calculates the credit limit and APR based on real data."""
     # Process transaction data
     labeled_transactions = label_data(transactions)

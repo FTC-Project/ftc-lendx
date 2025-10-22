@@ -107,6 +107,17 @@ class AISClient:
         data = r.json() or {}
         return data.get("data", []) if isinstance(data, dict) else data
 
+    def get_transactions(self, access_token: str, account_id: str) -> List[Dict]:
+        """GET /accounts/{account_id}/transactions"""
+        r = requests.get(
+            f"{self.base_url}/accounts/{account_id}/transactions",
+            headers=self._auth_bearer_header(access_token),
+            timeout=self.timeout,
+        )
+        self._handle_error(r, "Get transactions")
+        data = r.json() or {}
+        return data.get("data", []) if isinstance(data, dict) else data
+
     def get_psu_ui_url(self, consent_id: str, redirect_uri: str) -> str:
         """Constructs the PSU authorization UI URL."""
         return f"{self.base_url}/psu/authorize/ui?consentId={consent_id}&redirect_uri={redirect_uri}"

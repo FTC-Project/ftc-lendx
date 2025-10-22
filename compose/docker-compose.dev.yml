@@ -9,6 +9,7 @@ services:
       - ../.env
     environment:
       # Ensure Django hits the containerized DB
+      MPLCONFIGDIR: /tmp/matplotlib_config
       DB_HOST: db
       DB_PORT: "5432"
     ports:
@@ -32,6 +33,7 @@ services:
     environment:
       DB_HOST: db
       DB_PORT: "5432"
+      MPLCONFIGDIR: /tmp/matplotlib_config
     volumes:
       - ../:/app
     depends_on:

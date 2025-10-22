@@ -5,7 +5,7 @@ from backend.apps.users.models import TelegramUser
 
 
 class CreditTrustBalance(models.Model):
-    """Current CTT balance (can go negative)."""
+    """Current CTT balance"""
 
     user = models.OneToOneField(
         TelegramUser, on_delete=models.CASCADE, related_name="ctt_balance"
@@ -38,18 +38,3 @@ class TokenEvent(models.Model):
     class Meta:
         indexes = [models.Index(fields=["user", "kind", "created_at"])]
 
-
-class TokenTierRule(models.Model):
-    """Maps token tier → caps/APR (data-driven; evolves as economics shifts)."""
-
-    name = models.CharField(
-        max_length=32, unique=True
-    )  # New, Good, Excellent, High Risk
-    min_balance = models.IntegerField()  # inclusive
-    max_balance = models.IntegerField()  # inclusive
-    max_loan_cap = models.IntegerField()  # ZAR
-    base_apr_bps = models.IntegerField()  # 1500 = 15%
-    order = models.PositiveIntegerField(default=0)
-
-    class Meta:
-        ordering = ["order"]

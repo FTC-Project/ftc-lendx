@@ -345,7 +345,6 @@ class RegisterCommand(BaseCommand):
                     user.save(update_fields=fields)
 
                 # Bootstrap related records (idempotent)
-                PoolAccount.objects.get_or_create(user=user)
                 CreditTrustBalance.objects.get_or_create(user=user)
 
                 # POC “verification”: mark as verified if we have an ID doc on file

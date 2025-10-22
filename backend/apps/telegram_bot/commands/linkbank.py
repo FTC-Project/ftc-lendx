@@ -9,6 +9,7 @@ from django.utils.dateparse import parse_datetime
 from backend.apps.banking.adapters import AISClient
 from backend.apps.banking.models import BankAccount, Consent as BankConsent, OAuthToken
 from backend.apps.kyc.models import KYCVerification
+from backend.apps.scoring.tasks import start_scoring_pipeline
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.flow import (
     clear_flow,
@@ -388,8 +389,11 @@ def _handle_step_pick_account(msg: TelegramMessage, fsm: FSMStore, state: dict):
         )
 
         user = TelegramUser.objects.get(telegram_id=msg.user_id)
-        _save_bank_account(user, acct)
+        bank_account = _save_bank_account(user, acct)
         data["linked_account_id"] = acct_id
+
+        # Start the scoring pipeline
+        start_scoring_pipeline.delay(user.id, bank_account.id)
 
         set_step(fsm, msg.chat_id, CMD, S_DONE, data)
         reply(msg, t_done(), kb_back_cancel(), data=data)

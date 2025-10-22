@@ -1,5 +1,11 @@
 import pandas as pd
-from credit_scoring import import_transaction_data, label_data, group_transactions_by_month, calculate_affordability
+from credit_scoring import (
+    import_transaction_data,
+    label_data,
+    group_transactions_by_month,
+    calculate_affordability,
+)
+
 
 def check_kyc_status(client_id):
     # Dummy implementation for KYC status check
@@ -8,12 +14,14 @@ def check_kyc_status(client_id):
 
     return kyc_verified
 
+
 def check_concent_status(client_id):
     # Dummy implementation for consent status check
     # In a real scenario, this would query a database or an external service
     consent_valid = True if client_id % 4 == 0 else False
 
     return consent_valid
+
 
 def gather_trust_score(client_id):
     # Dummy implementation for trust score gathering
@@ -22,13 +30,15 @@ def gather_trust_score(client_id):
 
     return trust_score
 
+
 def gather_token_tier(client_id):
     # Dummy implementation for token tier gathering
     # In a real scenario, this would involve complex logic and data retrieval
-    tiers = ['Excellent', 'Good', 'New', 'High Risk']
+    tiers = ["Excellent", "Good", "New", "High Risk"]
     token_tier = tiers[client_id % 4]  # Example: token tier based on client_id
 
     return token_tier
+
 
 def calculate_trust_score_limit(trust_score):
     if trust_score >= 80:
@@ -42,22 +52,25 @@ def calculate_trust_score_limit(trust_score):
 
     return limit
 
+
 def calculate_affordability_limit(affordability):
-    limit = 3*affordability
+    limit = 3 * affordability
 
     return limit
 
+
 def calculate_apr(token_tier):
-    if token_tier == 'Excellent':
+    if token_tier == "Excellent":
         apr = 0.15
-    elif token_tier == 'Good':
+    elif token_tier == "Good":
         apr = 0.2
-    elif token_tier == 'New':
+    elif token_tier == "New":
         apr = 0.25
     else:  # High Risk
         apr = 0.35
 
     return apr
+
 
 def calculate_credit_limit(client_id, transactions_path):
     # Check KYC and consent status

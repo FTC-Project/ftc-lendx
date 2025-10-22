@@ -2,3 +2,4 @@
 from . import help  # noqa: F401
 from . import start  # noqa: F401
 from . import register  # noqa: F401
+from . import linkbank  # noqa: F401

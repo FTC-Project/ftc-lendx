@@ -18,9 +18,12 @@ class TelegramMessage:
     inline_message_id: Optional[str] = None
     command: Optional[str] = None
     args: Optional[List[str]] = None
+    photo_file_id: Optional[str] = None
+    document_file_id: Optional[str] = None
+    document_mime: Optional[str] = None
 
     def __post_init__(self) -> None:
-        if self.text.startswith("/"):
+        if self.text and self.text.startswith("/"):
             parts = self.text.split()
             self.command = parts[0][1:].lower()
             self.args = parts[1:] if len(parts) > 1 else []
@@ -28,7 +31,7 @@ class TelegramMessage:
     def to_payload(self) -> Dict[str, Any]:
         return asdict(self)
 
-    # function to go from payload to TelegramMessage
+    @staticmethod
     def from_payload(data: Dict[str, Any]) -> Optional["TelegramMessage"]:
         try:
             return TelegramMessage(**data)
@@ -62,6 +65,19 @@ def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:
         user = message.get("from", {}) or {}
         chat = message.get("chat", {}) or {}
         text = (message.get("text") or "").strip()
+
+        # Extract media file_ids, if present
+        photo_file_id = None
+        if message.get("photo"):
+            photo_file_id = message["photo"][-1]["file_id"]
+
+        document_file_id = None
+        document_mime = None
+        if message.get("document"):
+            document = message["document"]
+            document_file_id = document.get("file_id")
+            document_mime = document.get("mime_type")
+
         return TelegramMessage(
             chat_id=chat.get("id"),
             user_id=user.get("id"),
@@ -71,6 +87,10 @@ def parse_telegram_message(data: Dict[str, Any]) -> Optional[TelegramMessage]:
             text=text if text else None,
             callback_data=None,
             callback_query_id=None,
+            message_id=message.get("message_id"),
+            photo_file_id=photo_file_id,
+            document_file_id=document_file_id,
+            document_mime=document_mime,
         )
 
     print("[messages] Unsupported update type:", list(data.keys()))

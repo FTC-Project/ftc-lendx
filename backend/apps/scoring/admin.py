@@ -15,6 +15,7 @@ class RiskTierAdmin(admin.ModelAdmin):
     list_display = ("name", "min_score", "max_score", "order")
     list_editable = ("min_score", "max_score", "order")
 
+
 @admin.register(AffordabilitySnapshot)
 class AffordabilitySnapshotAdmin(admin.ModelAdmin):
     list_display = ("user", "limit", "apr", "token_tier", "calculated_at")

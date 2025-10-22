@@ -8,7 +8,11 @@ from backend.apps.banking.models import BankAccount, BankTransaction, OAuthToken
 from backend.apps.loans.models import Loan
 from backend.apps.scoring.credit_scoring import create_feature_vector, import_scorecard
 from backend.apps.scoring.limit import calculate_credit_limit
-from backend.apps.scoring.models import AffordabilitySnapshot, RiskTier, TrustScoreSnapshot
+from backend.apps.scoring.models import (
+    AffordabilitySnapshot,
+    RiskTier,
+    TrustScoreSnapshot,
+)
 from backend.apps.tokens.models import CreditTrustBalance
 from backend.apps.users.crypto import decrypt_secret
 from backend.apps.users.models import TelegramUser
@@ -40,7 +44,9 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
                     "description": tx.get("transactionInformation"),
                     "amount": tx.get("amount"),
                     "tx_type": "credit" if float(tx.get("amount")) > 0 else "debit",
-                    "category": tx.get("merchantDetails", {}).get("merchantCategoryCode"),
+                    "category": tx.get("merchantDetails", {}).get(
+                        "merchantCategoryCode"
+                    ),
                     "raw": tx,
                 },
             )
@@ -50,7 +56,10 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
             actor="system",
             resource="banking.transactions",
             action="write",
-            context={"count": len(transactions_data), "bank_account_id": bank_account_id},
+            context={
+                "count": len(transactions_data),
+                "bank_account_id": bank_account_id,
+            },
         )
 
         # 2. Prepare data for scoring
@@ -68,7 +77,9 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
 
         # 3. Calculate Trust Score
         # ------------------------
-        scorecard = import_scorecard("backend/apps/scoring/initial_trust_scorecard_v1.pkl")
+        scorecard = import_scorecard(
+            "backend/apps/scoring/initial_trust_scorecard_v1.pkl"
+        )
         feature_vector = create_feature_vector(df, scorecard)
         score = scorecard.score(feature_vector)[0]
 
@@ -77,8 +88,10 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
         score_table = scorecard.table(feature_vector)
         factors = score_table.groupby("Variable")["Points"].sum().to_dict()
 
-        #TODO: Add this to the DB at some point so we have some history
-        risk_tier = RiskTier.objects.filter(min_score__lte=score, max_score__gte=score).first()
+        # TODO: Add this to the DB at some point so we have some history
+        risk_tier = RiskTier.objects.filter(
+            min_score__lte=score, max_score__gte=score
+        ).first()
         risk_category = risk_tier.name if risk_tier else "High Risk"
 
         trust_score_snapshot = TrustScoreSnapshot.objects.create(

@@ -8,28 +8,55 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('scoring', '0001_initial'),
-        ('users', '0004_telegramuser_is_registered'),
+        ("scoring", "0001_initial"),
+        ("users", "0004_telegramuser_is_registered"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='trustscoresnapshot',
-            name='explanation',
+            model_name="trustscoresnapshot",
+            name="explanation",
         ),
         migrations.CreateModel(
-            name='AffordabilitySnapshot',
+            name="AffordabilitySnapshot",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('limit', models.DecimalField(decimal_places=2, max_digits=10)),
-                ('apr', models.DecimalField(decimal_places=2, max_digits=5)),
-                ('token_tier', models.CharField(db_index=True, max_length=32)),
-                ('calculated_at', models.DateTimeField(auto_now_add=True)),
-                ('trust_score_snapshot', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='affordability_snapshots', to='scoring.trustscoresnapshot')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='affordability_snapshots', to='users.telegramuser')),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("limit", models.DecimalField(decimal_places=2, max_digits=10)),
+                ("apr", models.DecimalField(decimal_places=2, max_digits=5)),
+                ("token_tier", models.CharField(db_index=True, max_length=32)),
+                ("calculated_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "trust_score_snapshot",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="affordability_snapshots",
+                        to="scoring.trustscoresnapshot",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="affordability_snapshots",
+                        to="users.telegramuser",
+                    ),
+                ),
             ],
             options={
-                'indexes': [models.Index(fields=['user', 'calculated_at'], name='scoring_aff_user_id_724707_idx')],
+                "indexes": [
+                    models.Index(
+                        fields=["user", "calculated_at"],
+                        name="scoring_aff_user_id_724707_idx",
+                    )
+                ],
             },
         ),
     ]

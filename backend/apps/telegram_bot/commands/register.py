@@ -498,7 +498,7 @@ class RegisterCommand(BaseCommand):
                 blob, mime = download_telegram_file(file_id)
                 # We don't have a TelegramUser yet; create a minimal placeholder for storing Document,
                 # or use a temp approach: in this POC, we can upsert user here with basic info (first/last/id).
-                user, _ = TelegramUser.objects.get(telegram_id=msg.user_id)
+                user = TelegramUser.objects.get(telegram_id=msg.user_id)
                 # Store/replace the 'id_front' doc (idempotent-ish)
                 # If you want strict idempotency, you can upsert by kind:
                 existing = user.documents.filter(kind="id_front").first()

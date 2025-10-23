@@ -388,7 +388,7 @@ def handle_pick_account(msg: TelegramMessage, fsm: FSMStore, state: dict) -> Non
         bank_account = save_bank_account(user, acct)
         data["linked_account_id"] = acct_id
 
-       # start_scoring_pipeline.delay(user.id, bank_account.id) TODO: Uncomment when ready
+        start_scoring_pipeline.delay(user.id, bank_account.id)
 
         set_step(fsm, msg.chat_id, CMD, S_DONE, data)
         reply(msg, t_done(), data=data)

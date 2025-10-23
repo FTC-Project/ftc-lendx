@@ -69,6 +69,9 @@ def calculate_savings_buffer(transactions, average_affordability):
     Calculates the savings buffer based on transaction data.
     """
     total_savings = transactions["amount"].sum()
+    # Ensure to convert any Decimal to float
+    total_savings = float(total_savings)
+    average_affordability = float(average_affordability)
     savings_buffer = (
         total_savings / average_affordability if average_affordability else float("inf")
     )

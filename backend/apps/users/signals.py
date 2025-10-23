@@ -13,6 +13,7 @@ def create_related_objects(sender, instance, created, **kwargs):
         # Create a KYC Verification Object
         KYCVerification.objects.create(user=instance, status="pending")
 
+
 # Make a celery event fire when a notification is created for score update
 @receiver(
     post_save, sender=TelegramUser, dispatch_uid="users.signals.notify_on_score_update"

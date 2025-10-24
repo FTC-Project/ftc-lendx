@@ -29,6 +29,7 @@ from backend.apps.users.models import TelegramUser
 # Helpers
 # ---------------------------
 
+
 def _to_py(obj: Any) -> Any:
     """
     If `obj` is a JSON string, parse to Python. Otherwise, return as-is.
@@ -37,7 +38,9 @@ def _to_py(obj: Any) -> Any:
         try:
             return json.loads(obj)
         except json.JSONDecodeError:
-            raise ValueError("Expected JSON string for transactions payload, got invalid JSON.")
+            raise ValueError(
+                "Expected JSON string for transactions payload, got invalid JSON."
+            )
     return obj
 
 
@@ -135,7 +138,9 @@ def _persist_transactions(
                 "description": ntx.get("transactionInformation"),
                 "amount": amt,
                 "tx_type": tx_type,
-                "category": (ntx.get("merchantDetails") or {}).get("merchantCategoryCode"),
+                "category": (ntx.get("merchantDetails") or {}).get(
+                    "merchantCategoryCode"
+                ),
                 "raw": ntx,
             },
         )
@@ -179,6 +184,7 @@ def _fetch_all_transactions(
 # ---------------------------
 # Task
 # ---------------------------
+
 
 @shared_task(queue="scoring")
 def start_scoring_pipeline(user_id: int, bank_account_id: int):
@@ -239,7 +245,10 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
         if df.empty:
             # Create a minimal snapshot to record that we attempted scoring but had no data
             trust_score_snapshot = TrustScoreSnapshot.objects.create(
-                user=user, trust_score=0.0, factors={}, risk_category="Insufficient Data"
+                user=user,
+                trust_score=0.0,
+                factors={},
+                risk_category="Insufficient Data",
             )
             AffordabilitySnapshot.objects.create(
                 user=user,
@@ -258,7 +267,9 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
                 continue
 
         # 5) Trust Score
-        scorecard = import_scorecard("backend/apps/scoring/initial_trust_scorecard_v1.pkl")
+        scorecard = import_scorecard(
+            "backend/apps/scoring/initial_trust_scorecard_v1.pkl"
+        )
         feature_vector = create_feature_vector(df, scorecard)
         score = float(scorecard.score(feature_vector)[0])
 
@@ -266,7 +277,9 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
         score_table = scorecard.table(feature_vector)
         factors = score_table.groupby("Variable")["Points"].sum().to_dict()
 
-        risk_tier = RiskTier.objects.filter(min_score__lte=score, max_score__gte=score).first()
+        risk_tier = RiskTier.objects.filter(
+            min_score__lte=score, max_score__gte=score
+        ).first()
         risk_category = risk_tier.name if risk_tier else "High Risk"
 
         trust_score_snapshot = TrustScoreSnapshot.objects.create(
@@ -275,7 +288,9 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
 
         # 7) Determine Token Tier
         token_balance = CreditTrustBalance.objects.filter(user=user).first()
-        has_active_loan = Loan.objects.filter(user=user, state__in=["funded", "disbursed"]).exists()
+        has_active_loan = Loan.objects.filter(
+            user=user, state__in=["funded", "disbursed"]
+        ).exists()
 
         if not token_balance or token_balance.balance == 0:
             token_tier = "New" if not has_active_loan else "High Risk"

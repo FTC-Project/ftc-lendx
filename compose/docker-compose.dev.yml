@@ -9,6 +9,7 @@ services:
       - ../.env
     environment:
       # Ensure Django hits the containerized DB
+      MPLCONFIGDIR: /tmp/matplotlib_config
       DB_HOST: db
       DB_PORT: "5432"
     ports:
@@ -21,17 +22,38 @@ services:
       redis:
         condition: service_healthy
 
-  celery_worker:
+  celery_telegram_worker:
     build:
       context: ..
       dockerfile: deploy/Dockerfile
     image: ftc-lendx:dev
-    command: celery -A backend worker -l info --concurrency=4
+    command: celery -A backend worker -l info -Q telegram_bot --concurrency=2
     env_file:
       - ../.env
     environment:
       DB_HOST: db
       DB_PORT: "5432"
+      MPLCONFIGDIR: /tmp/matplotlib_config
+    volumes:
+      - ../:/app
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery_scoring_worker:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    image: ftc-lendx:dev
+    command: celery -A backend worker -l info -Q scoring --concurrency=2
+    env_file:
+      - ../.env
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      MPLCONFIGDIR: /tmp/matplotlib_config
     volumes:
       - ../:/app
     depends_on:

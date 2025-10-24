@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import CreditTrustBalance, TokenEvent, TokenTierRule
+from .models import CreditTrustBalance, TokenEvent
 
 
 @admin.register(CreditTrustBalance)
@@ -14,22 +14,3 @@ class TokenEventAdmin(admin.ModelAdmin):
     list_filter = ("kind",)
     search_fields = ("user__username", "tx_hash")
     date_hierarchy = "created_at"
-
-
-@admin.register(TokenTierRule)
-class TokenTierRuleAdmin(admin.ModelAdmin):
-    list_display = (
-        "name",
-        "min_balance",
-        "max_balance",
-        "max_loan_cap",
-        "base_apr_bps",
-        "order",
-    )
-    list_editable = (
-        "min_balance",
-        "max_balance",
-        "max_loan_cap",
-        "base_apr_bps",
-        "order",
-    )

@@ -25,7 +25,6 @@ from backend.apps.telegram_bot.keyboards import kb_back_cancel, kb_options, kb_c
 from backend.apps.users.models import TelegramUser
 from backend.apps.kyc.models import KYCVerification, Document
 from backend.apps.tokens.models import CreditTrustBalance
-from backend.apps.pool.models import PoolAccount
 
 
 # -------- Flow config --------

@@ -6,24 +6,7 @@ from backend.apps.users.models import Notification
 from django.utils import timezone
 
 
-@receiver(pre_save, sender=Loan, dispatch_uid="loan_state_change_tracker")
-def loan_state_change_tracker(sender, instance: Loan, **kwargs):
-    if instance.pk:
-        prev = Loan.objects.get(pk=instance.pk)
-        instance._old_state = prev.state
-    else:
-        instance._old_state = None
 
-
-@receiver(post_save, sender=Loan, dispatch_uid="loan_on_state_change")
-def loan_on_state_change(sender, instance: Loan, **kwargs):
-    if instance._old_state and instance._old_state != instance.state:
-        LoanEvent.objects.create(loan=instance, name=instance.state, details={})
-        Notification.objects.create(
-            user=instance.user,
-            kind=f"loan_{instance.state}",
-            payload={"loan_id": str(instance.id)},
-        )
 
 
 @receiver(post_save, sender=Repayment, dispatch_uid="repayment_reconcile")

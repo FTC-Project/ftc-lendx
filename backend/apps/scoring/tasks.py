@@ -258,11 +258,13 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
                 trust_score_snapshot=trust_score_snapshot,
             )
             return  # Nothing else to do
-        
+
         # Ensure we convert any Decimal-fields to float for scoring
-        for col in df.select_dtypes(include=['object']).columns:
+        for col in df.select_dtypes(include=["object"]).columns:
             try:
-                df[col] = df[col].apply(lambda x: float(x) if isinstance(x, Decimal) else x)
+                df[col] = df[col].apply(
+                    lambda x: float(x) if isinstance(x, Decimal) else x
+                )
             except (ValueError, TypeError):
                 continue
 

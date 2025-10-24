@@ -25,9 +25,7 @@ class TestScoreCommand(BaseCommand):
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))
-        
 
-    
     @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
         message = TelegramMessage.from_payload(message_data)
@@ -54,4 +52,3 @@ class TestScoreCommand(BaseCommand):
             )
         except Exception as e:
             reply(message, f"Failed to queue scoring task: {e}")
-

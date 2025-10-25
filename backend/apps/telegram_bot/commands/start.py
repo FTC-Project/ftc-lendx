@@ -95,6 +95,7 @@ class StartCommand(BaseCommand):
                     telegram_id=msg.user_id,
                     defaults={
                         "username": msg.username,
+                        "chat_id": msg.chat_id,
                         "first_name": msg.first_name,
                         "last_name": msg.last_name,
                         "is_active": True,

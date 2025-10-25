@@ -6,9 +6,6 @@ from backend.apps.users.models import Notification
 from django.utils import timezone
 
 
-
-
-
 @receiver(post_save, sender=Repayment, dispatch_uid="repayment_reconcile")
 def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
     if not created:

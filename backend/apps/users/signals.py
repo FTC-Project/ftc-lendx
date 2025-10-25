@@ -44,4 +44,4 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             send_telegram_message_task.delay(chat_id=instance.user.chat_id, text=text)
         # Mark as sent
         instance.sent = True
-        instance.save()
+        instance.save(update_fields=['sent'])

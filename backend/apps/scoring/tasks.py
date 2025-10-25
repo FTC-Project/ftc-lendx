@@ -187,7 +187,7 @@ def _fetch_all_transactions(
 
 
 @shared_task(queue="scoring")
-def start_scoring_pipeline(user_id: int, bank_account_id: int):
+def start_scoring_pipeline(user_id: int):
     """
     Starts the credit scoring and affordability calculation pipeline.
     This version:
@@ -199,7 +199,10 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
     """
     try:
         user = TelegramUser.objects.get(id=user_id)
-        bank_account = BankAccount.objects.get(id=bank_account_id)
+        bank_account = BankAccount.objects.filter(user=user).first()  # Just get one account for now
+
+        if not bank_account:
+            raise ValueError("No valid bank account found for user.")
 
         # 1) OAuth & Client
         oauth_token = OAuthToken.objects.get(user=user)
@@ -226,10 +229,11 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
             actor="system",
             resource="banking.transactions",
             action="write",
-            context={"count": persisted_count, "bank_account_id": bank_account_id},
+            context={"count": persisted_count, "bank_account_id": bank_account.id},
         )
 
         # 4) Prepare data for scoring
+
         user_transactions = BankTransaction.objects.filter(account__user=user).values()
         df = pd.DataFrame(list(user_transactions))
 
@@ -253,7 +257,7 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
             AffordabilitySnapshot.objects.create(
                 user=user,
                 limit=Decimal("0"),
-                apr=None,
+                apr=Decimal("0"),
                 token_tier="New",
                 trust_score_snapshot=trust_score_snapshot,
             )
@@ -276,7 +280,7 @@ def start_scoring_pipeline(user_id: int, bank_account_id: int):
         score = float(scorecard.score(feature_vector)[0])
 
         # 6) Score breakdown
-        score_table = scorecard.table(feature_vector)
+        score_table = scorecard.table()
         factors = score_table.groupby("Variable")["Points"].sum().to_dict()
 
         risk_tier = RiskTier.objects.filter(

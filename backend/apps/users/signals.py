@@ -33,10 +33,15 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             return
         # Now we must use the `kind` to determine the message content
         if instance.kind == "score_updated":
-            text = (
-                f"Your trust score has been updated to {instance.payload['score']:.2f}"
-                f"({instance.payload['risk']})."
-            )
+            score = instance.payload.get('score')
+            risk = instance.payload.get('risk', 'unknown')
+            if score is not None:
+                text = (
+                    f"Your trust score has been updated to {score:.2f}"
+                    f" ({risk})."
+                )
+            else:
+                text = "Your trust score has been updated, but the new score is unavailable."
         else:
             # For other kinds, do not send a message
             return

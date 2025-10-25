@@ -10,6 +10,7 @@ class TelegramUser(models.Model):
         ("lender", "Lender"),
     ]
     telegram_id = models.BigIntegerField(unique=True, db_index=True)
+    chat_id = models.BigIntegerField(null=True, blank=True, db_index=True)
     username = models.CharField(max_length=64, null=True, blank=True, db_index=True)
     first_name = models.CharField(max_length=128, null=True, blank=True)
     last_name = models.CharField(max_length=128, null=True, blank=True)

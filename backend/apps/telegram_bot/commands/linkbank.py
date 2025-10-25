@@ -425,10 +425,10 @@ def handle_pick_account(msg: TelegramMessage, fsm: FSMStore, state: dict) -> Non
         }
 
         user = TelegramUser.objects.get(telegram_id=msg.user_id)
-        bank_account = save_bank_account(user, acct)
+        save_bank_account(user, acct)
         data["linked_account_id"] = acct_id
 
-        start_scoring_pipeline.delay(user.id, bank_account.id)
+        start_scoring_pipeline.delay(user.id)
 
         set_step(fsm, msg.chat_id, CMD, S_DONE, data)
         reply(msg, t_done(), data=data)

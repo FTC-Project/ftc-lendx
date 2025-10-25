@@ -45,10 +45,7 @@ class TestScoreCommand(BaseCommand):
 
         try:
             # Queue the scoring pipeline task
-            start_scoring_pipeline.delay(user.id, bank_account.id)
-            reply(
-                message,
-                f"Scoring started for user id={user.id} and bank_account id={bank_account.id}.",
-            )
+            start_scoring_pipeline.delay(user.id)
+            print("We got here at least!")
         except Exception as e:
             reply(message, f"Failed to queue scoring task: {e}")

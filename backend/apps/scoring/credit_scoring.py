@@ -185,7 +185,7 @@ def calculate_expense_to_income_ratio(average_income, average_expenses):
     return -average_expenses / average_income
 
 
-def import_scorecard(file_path):
+def import_scorecard(file_path) -> Scorecard:
     scorecard = Scorecard.load(file_path)
     return scorecard
 

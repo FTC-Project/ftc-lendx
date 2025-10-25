@@ -2,7 +2,10 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from backend.apps.telegram_bot.tasks import send_telegram_message_task
-from .models import TelegramUser, Notification  # Assuming Notification is in users.models
+from .models import (
+    TelegramUser,
+    Notification,
+)  # Assuming Notification is in users.models
 from backend.apps.kyc.models import KYCVerification
 
 
@@ -17,7 +20,11 @@ def create_user_related_objects(sender, instance, created, **kwargs):
 
 
 # When a Notification model is created, send a message to the user via Telegram
-@receiver(post_save, sender=Notification, dispatch_uid="notifications.signals.send_notification")
+@receiver(
+    post_save,
+    sender=Notification,
+    dispatch_uid="notifications.signals.send_notification",
+)
 def send_notification_on_creation(sender, instance, created, **kwargs):
     """Sends a Telegram message when a new Notification object is created."""
     if created:
@@ -32,10 +39,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"({instance.payload['risk']})."
             )
         if instance.user and instance.user.chat_id:
-            send_telegram_message_task.delay(
-                chat_id=instance.user.chat_id,
-                text=text
-            )
+            send_telegram_message_task.delay(chat_id=instance.user.chat_id, text=text)
         # Mark as sent
         instance.sent = True
         instance.save()

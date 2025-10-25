@@ -199,7 +199,9 @@ def start_scoring_pipeline(user_id: int):
     """
     try:
         user = TelegramUser.objects.get(id=user_id)
-        bank_account = BankAccount.objects.filter(user=user).first()  # Just get one account for now
+        bank_account = BankAccount.objects.filter(
+            user=user
+        ).first()  # Just get one account for now
 
         if not bank_account:
             raise ValueError("No valid bank account found for user.")

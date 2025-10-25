@@ -33,13 +33,10 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             return
         # Now we must use the `kind` to determine the message content
         if instance.kind == "score_updated":
-            score = instance.payload.get('score')
-            risk = instance.payload.get('risk', 'unknown')
+            score = instance.payload.get("score")
+            risk = instance.payload.get("risk", "unknown")
             if score is not None:
-                text = (
-                    f"Your trust score has been updated to {score:.2f}"
-                    f" ({risk})."
-                )
+                text = f"Your trust score has been updated to {score:.2f}" f" ({risk})."
             else:
                 text = "Your trust score has been updated, but the new score is unavailable."
         else:
@@ -49,4 +46,4 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             send_telegram_message_task.delay(chat_id=instance.user.chat_id, text=text)
         # Mark as sent
         instance.sent = True
-        instance.save(update_fields=['sent'])
+        instance.save(update_fields=["sent"])

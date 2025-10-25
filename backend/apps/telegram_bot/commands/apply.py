@@ -41,15 +41,17 @@ PREV: Dict[str, Optional[str]] = {
     S_CONFIRM: S_OFFER,
 }
 
+
 def get_offer_keyboard() -> dict:
     rows = [
         [
             {"text": "✅ Accept Terms", "callback_data": "flow:accept"},
             {"text": "❌ Decline", "callback_data": "flow:decline"},
         ],
-        [{"text": "📄 View Details", "callback_data": "flow:view_details"}]
+        [{"text": "📄 View Details", "callback_data": "flow:view_details"}],
     ]
     return kb_back_cancel(rows)
+
 
 def prompt_for(step: str, data: Optional[Dict[str, Any]]) -> str:
     prompts = {
@@ -61,6 +63,7 @@ def prompt_for(step: str, data: Optional[Dict[str, Any]]) -> str:
     }
     return prompts[step]
 
+
 def render_offer_summary(data: dict) -> str:
     return (
         "Loan Offer Summary:\n"
@@ -71,35 +74,40 @@ def render_offer_summary(data: dict) -> str:
         f"• Due Date: {data.get('due_date')}\n"
     )
 
+
 def render_repayment_schedule(data: dict) -> str:
-    schedule = data.get('schedule', [])
+    schedule = data.get("schedule", [])
     if not schedule:
         return "No repayment schedule available."
-    
+
     details = "Repayment Schedule:\n"
     for item in schedule:
         details += f"• Due: {item['due_at']}, Amount: ZAR {item['amount_due']}\n"
     return details
+
 
 def calculate_loan_details(amount: int, term_days: int, apr: float) -> dict:
     # Using simple interest for this POC.
     interest = (amount) * (apr / 100) * (term_days / 365)
     total_repayable = int(round(amount + interest))
     due_date = timezone.now().date() + datetime.timedelta(days=term_days)
-    
+
     # For this POC, we assume a single repayment at the end of the term.
-    schedule = [{
-        "installment_no": 1,
-        "due_at": due_date.strftime('%Y-%m-%d'),
-        "amount_due": total_repayable,
-    }]
+    schedule = [
+        {
+            "installment_no": 1,
+            "due_at": due_date.strftime("%Y-%m-%d"),
+            "amount_due": total_repayable,
+        }
+    ]
 
     return {
         "total_repayable": total_repayable,
-        "due_date": due_date.strftime('%Y-%m-%d'),
+        "due_date": due_date.strftime("%Y-%m-%d"),
         "schedule": schedule,
         "interest": int(round(interest)),
     }
+
 
 @register(
     name=CMD,
@@ -124,15 +132,25 @@ class ApplyCommand(BaseCommand):
         # Start flow
         if not state:
             user = TelegramUser.objects.filter(telegram_id=msg.user_id).first()
-            if not user or not user.is_registered or user.role != 'borrower':
+            if not user or not user.is_registered or user.role != "borrower":
                 clear_flow(fsm, msg.chat_id)
-                reply(msg, "You must be a registered borrower to apply for a loan. Use /register to get started.")
+                reply(
+                    msg,
+                    "You must be a registered borrower to apply for a loan. Use /register to get started.",
+                )
                 return
 
-            affordability = AffordabilitySnapshot.objects.filter(user=user).order_by('-calculated_at').first()
+            affordability = (
+                AffordabilitySnapshot.objects.filter(user=user)
+                .order_by("-calculated_at")
+                .first()
+            )
             if not affordability or affordability.limit <= 0:
                 clear_flow(fsm, msg.chat_id)
-                reply(msg, "We couldn't determine your loan eligibility at this time. You may need to link a bank account or wait for your score to be calculated.")
+                reply(
+                    msg,
+                    "We couldn't determine your loan eligibility at this time. You may need to link a bank account or wait for your score to be calculated.",
+                )
                 return
 
             # Convert Decimal to float for serialization
@@ -169,10 +187,10 @@ class ApplyCommand(BaseCommand):
                     mark_prev_keyboard(data, msg)
                     reply(msg, "Loan application cancelled.", data=data)
                     return
-                
+
                 set_step(fsm, msg.chat_id, CMD, prev, data)
                 mark_prev_keyboard(data, msg)
-                
+
                 kb = kb_back_cancel()
                 if prev == S_OFFER:
                     kb = get_offer_keyboard()
@@ -188,60 +206,84 @@ class ApplyCommand(BaseCommand):
                 if cb == "flow:accept":
                     set_step(fsm, msg.chat_id, CMD, S_CONFIRM, data)
                     mark_prev_keyboard(data, msg)
-                    reply(msg, f"{render_offer_summary(data)}\n\nPlease confirm your application.", kb_confirm(), data=data)
+                    reply(
+                        msg,
+                        f"{render_offer_summary(data)}\n\nPlease confirm your application.",
+                        kb_confirm(),
+                        data=data,
+                    )
                     return
-                
+
                 if cb == "flow:decline":
                     user = TelegramUser.objects.get(telegram_id=msg.user_id)
                     Loan.objects.create(
                         user=user,
-                        amount=data['amount'],
-                        term_days=data['term_days'],
-                        apr_bps=int(data['apr'] * 100),
-                        state='declined',
+                        amount=data["amount"],
+                        term_days=data["term_days"],
+                        apr_bps=int(data["apr"] * 100),
+                        state="declined",
                     )
                     clear_flow(fsm, msg.chat_id)
                     mark_prev_keyboard(data, msg)
-                    reply(msg, "Loan offer declined. You can start a new application with /apply.", data=data)
+                    reply(
+                        msg,
+                        "Loan offer declined. You can start a new application with /apply.",
+                        data=data,
+                    )
                     return
 
                 if cb == "flow:view_details":
                     set_step(fsm, msg.chat_id, CMD, S_DETAILS, data)
                     mark_prev_keyboard(data, msg)
-                    reply(msg, render_repayment_schedule(data), kb_back_cancel([[{"text": "Back to Offer", "callback_data": "flow:back"}]]), data=data)
+                    reply(
+                        msg,
+                        render_repayment_schedule(data),
+                        kb_back_cancel(
+                            [[{"text": "Back to Offer", "callback_data": "flow:back"}]]
+                        ),
+                        data=data,
+                    )
                     return
 
             if cb == "flow:confirm" and step == S_CONFIRM:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                
+
                 loan = Loan.objects.create(
                     user=user,
-                    amount=data['amount'],
-                    term_days=data['term_days'],
-                    apr_bps=int(data['apr'] * 100),
-                    state='created',
-                    due_date=datetime.datetime.strptime(data['due_date'], '%Y-%m-%d').date(),
-                    interest_portion=data['interest']
-                )
-                
-                LoanOffer.objects.create(
-                    loan=loan,
-                    monthly_payment=data['total_repayable'], # Simplified for single payment
-                    total_repayable=data['total_repayable'],
-                    breakdown={'schedule': data['schedule']}
+                    amount=data["amount"],
+                    term_days=data["term_days"],
+                    apr_bps=int(data["apr"] * 100),
+                    state="created",
+                    due_date=datetime.datetime.strptime(
+                        data["due_date"], "%Y-%m-%d"
+                    ).date(),
+                    interest_portion=data["interest"],
                 )
 
-                for item in data['schedule']:
+                LoanOffer.objects.create(
+                    loan=loan,
+                    monthly_payment=data[
+                        "total_repayable"
+                    ],  # Simplified for single payment
+                    total_repayable=data["total_repayable"],
+                    breakdown={"schedule": data["schedule"]},
+                )
+
+                for item in data["schedule"]:
                     RepaymentSchedule.objects.create(
                         loan=loan,
-                        installment_no=item['installment_no'],
-                        due_at=datetime.datetime.strptime(item['due_at'], '%Y-%m-%d'),
-                        amount_due=item['amount_due']
+                        installment_no=item["installment_no"],
+                        due_at=datetime.datetime.strptime(item["due_at"], "%Y-%m-%d"),
+                        amount_due=item["amount_due"],
                     )
 
                 clear_flow(fsm, msg.chat_id)
                 mark_prev_keyboard(data, msg)
-                reply(msg, "✅ Your loan application has been submitted! We will notify you once it is funded.", data=data)
+                reply(
+                    msg,
+                    "✅ Your loan application has been submitted! We will notify you once it is funded.",
+                    data=data,
+                )
                 return
 
             mark_prev_keyboard(data, msg)
@@ -253,25 +295,32 @@ class ApplyCommand(BaseCommand):
         if step == S_AMOUNT:
             try:
                 amount = int(text)
-                if amount <= 0 or amount > int(data['limit']):
+                if amount <= 0 or amount > int(data["limit"]):
                     raise ValueError()
-                data['amount'] = amount
+                data["amount"] = amount
                 set_step(fsm, msg.chat_id, CMD, S_TERM, data)
                 mark_prev_keyboard(data, msg)
                 reply(msg, prompt_for(S_TERM, data), kb_back_cancel(), data=data)
             except (ValueError, TypeError):
                 mark_prev_keyboard(data, msg)
-                reply(msg, f"Invalid amount. Please enter a number between 1 and {int(data['limit'])}.", kb_back_cancel(), data=data)
+                reply(
+                    msg,
+                    f"Invalid amount. Please enter a number between 1 and {int(data['limit'])}.",
+                    kb_back_cancel(),
+                    data=data,
+                )
             return
 
         if step == S_TERM:
             try:
                 term_days = int(text)
                 if not (1 <= term_days <= 365):
-                     raise ValueError()
-                data['term_days'] = term_days
-                
-                loan_details = calculate_loan_details(data['amount'], data['term_days'], data['apr'])
+                    raise ValueError()
+                data["term_days"] = term_days
+
+                loan_details = calculate_loan_details(
+                    data["amount"], data["term_days"], data["apr"]
+                )
                 data.update(loan_details)
 
                 set_step(fsm, msg.chat_id, CMD, S_OFFER, data)
@@ -279,12 +328,24 @@ class ApplyCommand(BaseCommand):
                 reply(msg, render_offer_summary(data), get_offer_keyboard(), data=data)
             except (ValueError, TypeError):
                 mark_prev_keyboard(data, msg)
-                reply(msg, "Invalid term. Please enter a number of days (e.g., 30).", kb_back_cancel(), data=data)
+                reply(
+                    msg,
+                    "Invalid term. Please enter a number of days (e.g., 30).",
+                    kb_back_cancel(),
+                    data=data,
+                )
             return
-        
+
         if step == S_DETAILS:
             mark_prev_keyboard(data, msg)
-            reply(msg, render_repayment_schedule(data), kb_back_cancel([[{"text": "Back to Offer", "callback_data": "flow:back"}]]), data=data)
+            reply(
+                msg,
+                render_repayment_schedule(data),
+                kb_back_cancel(
+                    [[{"text": "Back to Offer", "callback_data": "flow:back"}]]
+                ),
+                data=data,
+            )
             return
 
         if step in [S_OFFER, S_CONFIRM]:

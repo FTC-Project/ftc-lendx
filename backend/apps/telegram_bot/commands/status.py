@@ -6,7 +6,6 @@ from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.commands.register import register
 from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.flow import reply
-from backend.apps.telegram_bot.keyboards import kb_back_cancel
 from backend.apps.loans.models import Loan, RepaymentSchedule
 from backend.apps.users.models import TelegramUser
 
@@ -46,8 +45,7 @@ def _kb_loan_actions(loan_id: str):
         [
             InlineKeyboardButton("💳 Make Payment", callback_data=f"pay:{loan_id}"),
             InlineKeyboardButton("📜 View History", callback_data=f"history:{loan_id}"),
-        ],
-        [InlineKeyboardButton("🔙 Back", callback_data="back")],
+        ]
     ]
     return InlineKeyboardMarkup(keyboard)
 
@@ -121,7 +119,6 @@ class StatusCommand(BaseCommand):
             reply(
                 msg,
                 "You currently do not have an active loan.\n\nUse /apply to request a new loan.",
-                reply_markup=kb_back_cancel(),
             )
             return
 
@@ -142,6 +139,4 @@ class StatusCommand(BaseCommand):
         )
 
         keyboard = _kb_loan_actions(loan["loan_id"])
-
-        # Use HTML safely; pass keyboard object to reply
         reply(msg, txt, keyboard=keyboard, parse_mode="HTML")

@@ -57,17 +57,25 @@ async def _query_active_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
     try:
         user = await TelegramUser.objects.aget(telegram_id=telegram_id)
 
-        loan = await Loan.objects.filter(user=user, state__in=["disbursed", "funded"]) \
-                                 .order_by("-created_at").afirst()
+        loan = (
+            await Loan.objects.filter(user=user, state__in=["disbursed", "funded"])
+            .order_by("-created_at")
+            .afirst()
+        )
         if not loan:
             return None
 
         total_repayable = loan.amount + loan.interest_portion
         remaining = total_repayable - loan.repaid_amount
 
-        next_due = await RepaymentSchedule.objects.filter(
-            loan=loan, status__in=["pending", "partial"]
-        ).order_by("due_at").values_list("due_at", flat=True).afirst()
+        next_due = (
+            await RepaymentSchedule.objects.filter(
+                loan=loan, status__in=["pending", "partial"]
+            )
+            .order_by("due_at")
+            .values_list("due_at", flat=True)
+            .afirst()
+        )
 
         return {
             "loan_id": str(loan.id),

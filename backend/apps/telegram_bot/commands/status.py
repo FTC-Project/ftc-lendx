@@ -33,41 +33,31 @@ def _status_badge(state: str) -> str:
         "repaid": "✅ Paid Off",
         "funded": "⏳ Funded",
         "created": "📝 Created",
+        "approved": "🟡 Approved",
+        "submitted": "📨 Submitted",
         "declined": "❌ Declined",
     }.get(s, "⚪ Unknown")
 
 
-def _kb_loan_actions(loan_id: str):
-    """Inline keyboard with Make Payment / View History buttons."""
-    from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
-    keyboard = [
-        [
-            InlineKeyboardButton("💳 Make Payment", callback_data=f"pay:{loan_id}"),
-            InlineKeyboardButton("📜 View History", callback_data=f"history:{loan_id}"),
-        ]
-    ]
-    return InlineKeyboardMarkup(keyboard)
-
-
-async def _query_active_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
-    """Return user's most recent active loan."""
+async def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
+    """Return user's most recent loan, regardless of state."""
     try:
         user = await TelegramUser.objects.aget(telegram_id=telegram_id)
 
-        loan = (
-            await Loan.objects.filter(user=user, state__in=["disbursed", "funded"])
+        loan = await (
+            Loan.objects.filter(user=user)
             .order_by("-created_at")
             .afirst()
         )
+
         if not loan:
             return None
 
         total_repayable = loan.amount + loan.interest_portion
         remaining = total_repayable - loan.repaid_amount
 
-        next_due = (
-            await RepaymentSchedule.objects.filter(
+        next_due = await (
+            RepaymentSchedule.objects.filter(
                 loan=loan, status__in=["pending", "partial"]
             )
             .order_by("due_at")
@@ -98,11 +88,11 @@ async def _query_active_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
 @register(
     name="status",
     aliases=["/status"],
-    description="Check your active loan status",
+    description="Check the status of your most recent loan",
     permission="user",
 )
 class StatusCommand(BaseCommand):
-    """Displays the user's active loan information."""
+    """Displays the user's most recent loan information (any state)."""
 
     @property
     def task(self):
@@ -113,13 +103,10 @@ class StatusCommand(BaseCommand):
             reply(msg, "Error identifying user.")
             return
 
-        loan = async_to_sync(_query_active_loan)(msg.user_id)
+        loan = async_to_sync(_query_latest_loan)(msg.user_id)
 
         if not loan:
-            reply(
-                msg,
-                "You currently do not have an active loan.\n\nUse /apply to request a new loan.",
-            )
+            reply(msg, "You currently do not have any loan records.")
             return
 
         apr = loan["apr_bps"] / 100
@@ -138,5 +125,4 @@ class StatusCommand(BaseCommand):
             f"<b>Status:</b> {_status_badge(loan['state'])}"
         )
 
-        keyboard = _kb_loan_actions(loan["loan_id"])
-        reply(msg, txt, keyboard=keyboard, parse_mode="HTML")
+        reply(msg, txt, parse_mode="HTML")

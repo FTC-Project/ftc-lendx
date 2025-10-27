@@ -5,3 +5,4 @@ from . import register  # noqa: F401
 from . import linkbank  # noqa: F401
 from . import testscore  # noqa: F401
 from . import history  # noqa: F401
+from . import apply  # noqa: F401

@@ -1,144 +1,130 @@
-# Concept
-My idea is for there to be 4 main contracts, 1 for handling loans, 1 for handling the liquidity pooling, 1 for escrow and 1 for releasing creditTrustTokens.
+# LoanSystemMVP Contract Documentation
 
-There are **four main contracts**:
+## Overview
 
-1. **LoanRegistry** – orchestrates and records all loan activity.  
-2. **LiquidityPool** – manages pooled lender funds.  
-3. **EscrowContract** – temporarily holds funds during loan and repayment flows.  
-4. **CreditTrustToken** – issues non-transferable "credit trust" tokens to reward reliable borrowers.
+This project implements a minimal viable product (MVP) for a decentralized lending system. The system consists of three main contracts:
 
-# P2P Loan Sequence Diagram
+1. **FTCToken** – ERC20 token representing fungible assets in the lending ecosystem.
 
-```{mermaid}
-sequenceDiagram
-    participant Borrower
-    participant LoanRegistry
-    participant Escrow
-    participant Lender
-    participant CreditToken
+2. **CreditTrustToken** (CTT) – Soulbound reputation token tracking borrower trust scores.
 
-    Borrower->>LoanRegistry: requestLoan(amount, duration)
-    LoanRegistry->>Escrow: createEscrow(borrower, amount)
-    Lender->>LoanRegistry: fundLoan(loanId, amount)
-    LoanRegistry->>Escrow: depositFunds(lender, amount)
-    Escrow-->>Borrower: releaseFunds()
+3. **LoanSystemMVP** – Main lending contract combining loan management, escrow, and liquidity pooling.
 
-    Borrower->>Escrow: repayLoan(amount)
-    Escrow->>LoanRegistry: markRepaid(loanId)
-    LoanRegistry->>CreditToken: mintCreditToken(borrower, repaymentScore)
-    CreditToken-->>Borrower: issueCreditToken()
+The system allows lenders to deposit ERC20 tokens (FTCT), enables admin-managed loan creation and disbursement, and tracks borrower reputation via CTT.
+
+## Contracts
+
+### 1. FTCToken
+
+**Purpose:**  
+FTCToken is a standard ERC20 token used in the ecosystem for lending and borrowing. It represents fungible assets deposited into the loan pool.  
+
+**Key Features:**
+- ERC20 token with `mint` capability.
+- Only the owner (admin) can mint new tokens.
+- Can be used to deposit into the lending pool instead.
+
+**Constructor:**  
+```solidity
+constructor(address admin)
 ```
 
-# LiquidityPool Loan Sequence Diagram
-
-```{mermaid}
-sequenceDiagram
-    participant Borrower
-    participant LoanRegistry
-    participant Escrow
-    participant LiquidityPool
-    participant CreditToken
-    participant Lender
-
-    Lender->>LiquidityPool: depositLiquidity(amount)
-    LiquidityPool-->>LoanRegistry: updatePoolBalance()
-
-    Borrower->>LoanRegistry: requestLoan(amount, duration)
-    LoanRegistry->>LiquidityPool: allocateFunds(loanId, amount)
-    LiquidityPool->>Escrow: depositFunds(amount)
-    Escrow-->>Borrower: releaseFunds()
-
-    Borrower->>Escrow: repayLoan(amount)
-    Escrow->>LiquidityPool: returnFundsWithInterest(amount)
-    LiquidityPool->>LoanRegistry: markRepaid(loanId)
-    LoanRegistry->>CreditToken: mintCreditToken(borrower, repaymentScore)
-    CreditToken-->>Borrower: issueCreditToken()
+**Function:** 
+```solidity
+mint(address to, uint256 amount) // Mints new FTCT tokens to the specified address (admin only)
 ```
+***
+### 2. CreditTrustToken
+
+**Purpose:**
+
+CTT is a soulbound token used to track borrower reputation. Balances are non-transferable, can be negative, and are modified only by the admin or the `LoanSystemMVP` contract.
 
 
-# 1. LoanRegistry Contract (Core Logic)
 
-**Purpose:**  
-Acts as the main controller and single source of truth for all loans on the platform.
+**Key Features**
+- Tracks an `int256` balance for each user (`tokenBalance`) representing trust score.
+- Users must be initialized before interacting with loans.
+- Reputation is minted for on-time repayment and burned on default.
+- Only admin or `LoanSystemMVP` contract can modify balances.
+- No ERC20 transfer functionality — soulbound by design.
 
-**Responsibilities:**
-- Registers all loans (whether P2P or from the pool).
-- Keeps mappings like `loanId → borrower → lender(s) → status`.
-- Handles loan lifecycle states: `Requested → Funded → Active → Repaid → Defaulted`.
-- Calls functions from other contracts to issue, escrow, and close loans.
 
-**Interactions:**
-- Calls `EscrowContract` to lock/release funds.
-- Calls `CreditTokenContract` to mint reputation tokens after repayment.
-- Interfaces with `LiquidityPool` if the loan is P2Pool instead of P2P.
-
----
-
-# 2. LiquidityPool Contract
-
-**Purpose:**  
-Enables tech-savvy lenders to deposit funds collectively, which are used to fulfill borrower requests when no direct P2P lender is matched.
-
-**Responsibilities:**
-- Accepts deposits from lenders → tracks share balances.
-- Provides funds to `LoanRegistry` on borrower requests.
-- Receives repayments and updates lenders’ share values.
-- Can implement a basic yield distribution mechanism (e.g., proportional to pool share).
-
-**Interactions:**
-- Invoked by `LoanRegistry` when a borrower opts for pooled lending.
-- Sends loan funds to `EscrowContract`.
-- Receives repayments (via `LoanRegistry` or directly from `EscrowContract`).
+**State Variables**
+| Variable        | Description                                                  |
+|----------------|--------------------------------------------------------------|
+| `tokenBalance` | Borrower trust scores (`int256`)                              |
+| `isInitialized`| Tracks whether a borrower is initialized                      |
+| `admin`        | Admin address                                                 |
+| `loanSystem`   | Trusted `LoanSystemMVP` contract allowed to mint/burn tokens |
 
 ---
 
-# 3. EscrowContract
+**Functions**
+- `setLoanSystem(address _loanSystem)` – Authorizes the `LoanSystemMVP` contract.
+- `initializeUser(address user, uint256 initialTrustScore)` – Initializes a user with a trust score.
+- `mint(address user, uint256 amount)` – Increases user trust score.
+- `burn(address user, uint256 amount)` – Decreases user trust score.
+- `setAdmin(address newAdmin)` – Rotates admin.
 
-**Purpose:**  
-Handles temporary custody of funds during loan creation and repayment — ensures trustless transfers.
+***
+### 3. LoanSystemMVP
 
-**Responsibilities:**
-- Holds lender or pool funds until the loan is activated.
-- Releases funds to borrower once `LoanRegistry` marks it “Approved”.
-- Locks repayments until verified, then distributes to lender(s) or pool.
-
-**Interactions:**
-- Controlled by `LoanRegistry` (never directly by users).
-- Receives funds from `LiquidityPool` or individual lender.
-- Sends funds to borrower and back to lender(s) after repayment.
+### Purpose
+This contract is the core of the lending platform, combining a liquidity pool, escrow management, and loan lifecycle management. It integrates both `FTCToken` (for deposits) and `CreditTrustToken` (CTT) for borrower reputation.
 
 ---
 
-# 4. CreditTrustToken Contract
-
-**Purpose:**  
-Rewards borrowers who repay on time with a non-transferable credit reputation token (soulbound token).
-
-**Responsibilities:**
-- Mint new tokens when `LoanRegistry` marks a loan as “Repaid”.
-- In future, store credit metadata (e.g., number of successful repayments).
-- Tokens can be queried by the scoring engine or Telegram bot to assess reliability.
-
-**Interactions:**
-- Called by `LoanRegistry` upon successful repayment.
-- Read by the off-chain Python credit scoring engine to feed future scoring logic.
+### Key Features
+- Lenders can deposit FTCT tokens to the pool and receive shares proportional to their contribution.
+- Admin can create loans, fund them from the pool, disburse to borrowers, and mark repayment or default.
+- Borrowers’ trust scores in CTT are updated automatically upon repayment or default.
+- Supports simple interest loans calculated using:  
+  `principal * APR * term / 36500`
 
 ---
 
-# Workflow
+### State Variables
+| Variable      | Description                                                  |
+|---------------|--------------------------------------------------------------|
+| `totalPool`   | Total liquidity (ETH/FTCT) including interest                |
+| `totalShares` | Total shares issued to lenders                               |
+| `sharesOf`    | Mapping of lender address → share balance                    |
+| `FTCToken`    | Reference to `FTCToken` contract                             |
+| `ctt`         | Reference to `CreditTrustToken` contract                     |
+| `loans`       | Mapping of loan IDs → `Loan` struct                          |
+| `nextId`      | Counter for loan IDs                                         |
 
-**P2P Loan**
-1. Borrower submits loan request → LoanRegistry creates record.
-2. Lender accepts → funds sent to EscrowContract.
-3. LoanRegistry approves → Escrow releases funds to borrower.
-4. Borrower repays → Escrow returns funds + interest to lender.
-5. LoanRegistry calls CreditTrustToken to mint a token for borrower.
+---
 
-**Pool-based Loan**
-1. Borrower submits loan request → chooses “Pool”.
-2. LoanRegistry requests funding from LiquidityPool.
-3. Pool transfers funds to EscrowContract.
-4. Borrower receives funds → later repays → Escrow returns repayment to pool.
-5. Pool updates internal balances for all liquidity providers.
-6. LoanRegistry mints a CreditTrustToken for borrower.
+## 🔗 How the Contracts Interact
+
+
+### FTCToken ↔ LoanSystemMVP
+- Lenders deposit FTCT tokens into the LoanSystem pool via `depositFTCT`.
+- Loans can be disbursed in FTCT tokens via `markDisbursedFTCT`.
+- Borrowers repay in FTCT tokens via `markRepaidFTCT`.
+
+---
+
+### CreditTrustToken ↔ LoanSystemMVP
+- LoanSystem initializes borrower in CTT when creating a loan.
+- On loan repayment, LoanSystem mints trust to borrower.
+- On default, LoanSystem burns trust from borrower.
+
+---
+
+### Admin
+- The admin account has full control over loan management and token operations.
+- Admin can rotate themselves, authorize LoanSystem in CTT, and mint FTCT tokens.
+
+---
+
+### 🧾 Summary
+| Contract         | Role                                                                 |
+|------------------|----------------------------------------------------------------------|
+| `FTCToken`       | Fungible token for deposits and lending                              |
+| `CreditTrustToken (CTT)` | Soulbound token for borrower reputation, only modified by LoanSystem/admin |
+| `LoanSystemMVP`  | Core contract managing liquidity, loans, escrow, repayment, defaults, and reputation updates |
+
+Together, these contracts implement a decentralized lending platform with pooled liquidity, interest accrual, and reputation-based borrower incentives.

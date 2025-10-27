@@ -2,9 +2,9 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "./LoanSystemMVP.sol";
-import "./CreditTrustToken.sol";
-import "./FTCToken.sol";
+import "../contracts/LoanSystemMVP.sol";
+import "../contracts/CreditTrustToken.sol";
+import "../contracts/FTCToken.sol";
 
 contract LoanSystemMVPTest is Test {
     LoanSystemMVP loanSystem;
@@ -19,6 +19,10 @@ contract LoanSystemMVPTest is Test {
         // Deploy CreditTrustToken with admin
         vm.prank(admin);
         ctt = new CreditTrustToken(admin);
+
+        // Deploy FTCToken with admin
+        vm.prank(admin);
+        ftcToken = new FTCToken(admin);
 
         // Deploy LoanSystemMVP
         vm.prank(admin);

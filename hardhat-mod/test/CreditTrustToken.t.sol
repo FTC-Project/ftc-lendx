@@ -2,7 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "forge-std/Test.sol";
-import "./CreditTrustToken.sol";
+import "../contracts/CreditTrustToken.sol";
 
 contract CreditTrustTokenTest is Test {
     CreditTrustToken token;
@@ -57,7 +57,7 @@ contract CreditTrustTokenTest is Test {
 
     function test_NonAdminMint_Reverts() public {
     vm.prank(user2);
-    vm.expectRevert("Unauthorized: not admin");
+    vm.expectRevert("Unauthorized: not admin or loan system");
     token.mint(user1, 10);
     }
 
@@ -71,7 +71,7 @@ contract CreditTrustTokenTest is Test {
 
     function test_NonAdminSetAdmin_Reverts() public {
     vm.prank(user1);
-    vm.expectRevert("Unauthorized: not admin");
+    vm.expectRevert("Unauthorized: not admin or loan system");
     token.setAdmin(user2);
     }
 

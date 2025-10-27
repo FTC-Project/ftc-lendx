@@ -45,6 +45,7 @@ CAT_GENERAL = "general"
 # Keyboards (kept local to command to avoid mixing global flow callbacks)
 # ---------------------------
 
+
 # NOTE (SANANA): We had `def _kb(inline_rows: List[List[DictType]]) -> dict:` but changed to DICT
 def _kb(inline_rows: List[List[Dict]]) -> dict:
     return {"inline_keyboard": inline_rows}
@@ -62,7 +63,7 @@ def kb_help_menu() -> dict:
         [{"text": "❌ Cancel/Close ", "callback_data": "flow:cancel"}],
     ]
     return _kb(rows)
-    
+
     # NOTE FROM (SANANA): All the above appear to have corresponding functions/responses except Loan which has subcategories which need to be create (done in this fix)
 
 
@@ -87,15 +88,22 @@ def kb_fees() -> dict:
     ]
     return _kb(rows)
 
+
 # NOTE FROM (SANANA): So, if the user selects [Loan Application] these are the options that come up
 def kb_loan() -> dict:
     rows = [
         [{"text": "How to apply", "callback_data": f"{CB_Q}loan:howtoapply"}],
-        [{"text": "Why my application failed", "callback_data": f"{CB_Q}loan:whyfailed"}],
+        [
+            {
+                "text": "Why my application failed",
+                "callback_data": f"{CB_Q}loan:whyfailed",
+            }
+        ],
         [{"text": "Document requirements", "callback_data": f"{CB_Q}loan:docs"}],
         [{"text": "⬅️ Back to Help Menu", "callback_data": CB_MENU}],
     ]
     return _kb(rows)
+
 
 # (Optional simple back menus for other categories)
 def kb_simple_back() -> dict:

@@ -1,0 +1,39 @@
+{
+  "_format": "hh3-sol-build-info-1",
+  "id": "solc-0_8_28-34b08581b7c7ad3a38fd66b2c1f4b8efba41e1c2",
+  "solcVersion": "0.8.28",
+  "solcLongVersion": "0.8.28+commit.7893614a",
+  "userSourceNameMap": {
+    "contracts/CreditTrustToken.sol": "project/contracts/CreditTrustToken.sol"
+  },
+  "input": {
+    "language": "Solidity",
+    "settings": {
+      "evmVersion": "cancun",
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode",
+            "evm.deployedBytecode",
+            "evm.methodIdentifiers",
+            "metadata"
+          ]
+        }
+      },
+      "remappings": []
+    },
+    "sources": {
+      "project/contracts/CreditTrustToken.sol": {
+        "content": "pragma solidity ^0.8.20;\r\n\r\n/**\r\n * @title CreditTrustToken (Soulbound Reputation Token)\r\n * @notice Non-transferable ERC-like token that tracks borrower reputation.\r\n *         Balances can go negative (int256). Only admin (LoanManager) can mint/burn.\r\n */\r\ncontract CreditTrustToken {\r\n    mapping(address => int256) public tokenBalance;\r\n    mapping(address => bool) public isInitialized;\r\n\r\n    address public admin;\r\n    address public loanSystem; // <- new trusted contract\r\n\r\n    event UserInitialized(address indexed user, int256 initialTrustScore);\r\n    event Minted(address indexed user, uint256 amount, int256 newBalance);\r\n    event Burned(address indexed user, uint256 amount, int256 newBalance);\r\n\r\n    modifier onlyAdmin() {\r\n        require(msg.sender == admin, \"Unauthorized: not admin\");\r\n        _;\r\n    }\r\n\r\n    modifier onlyAdminOrLoanSystem() {\r\n        require(\r\n            msg.sender == admin || msg.sender == loanSystem,\r\n            \"Unauthorized: not admin or loan system\"\r\n        );\r\n        _;\r\n    }\r\n\r\n    constructor(address _admin) {\r\n        require(_admin != address(0), \"Admin cannot be zero\");\r\n        admin = _admin;\r\n    }\r\n\r\n    /// @notice One-time setup by admin to authorize the LoanSystem contract\r\n    function setLoanSystem(address _loanSystem) external onlyAdmin {\r\n        require(_loanSystem != address(0), \"LoanSystem cannot be zero\");\r\n        loanSystem = _loanSystem;\r\n    }\r\n\r\n\r\n    function initializeUser(address user, uint256 initialTrustScore) external onlyAdminOrLoanSystem {\r\n        require(user != address(0), \"Invalid user\");\r\n        require(!isInitialized[user], \"Already initialized\");\r\n        require(initialTrustScore <= uint256(type(int256).max), \"Score too large\");\r\n\r\n        int256 initScore = int256(initialTrustScore);\r\n        tokenBalance[user] = initScore;\r\n        isInitialized[user] = true;\r\n\r\n        emit UserInitialized(user, initScore);\r\n    }\r\n\r\n    function mint(address user, uint256 amount) external onlyAdminOrLoanSystem {\r\n        require(user != address(0), \"Invalid user\");\r\n        require(amount > 0, \"Amount must be > 0\");\r\n        require(amount <= uint256(type(int256).max), \"Amount too large\");\r\n\r\n        int256 newBalance = tokenBalance[user] + int256(amount);\r\n        tokenBalance[user] = newBalance;\r\n\r\n        emit Minted(user, amount, newBalance);\r\n    }\r\n\r\n    function burn(address user, uint256 amount) external onlyAdminOrLoanSystem {\r\n        require(user != address(0), \"Invalid user\");\r\n        require(amount > 0, \"Amount must be > 0\");\r\n        require(amount <= uint256(type(int256).max), \"Amount too large\");\r\n\r\n        int256 newBalance = tokenBalance[user] - int256(amount);\r\n        tokenBalance[user] = newBalance;\r\n\r\n        emit Burned(user, amount, newBalance);\r\n    }\r\n\r\n    // Optional: allow admin rotation if LoanManager is upgraded\r\n    function setAdmin(address newAdmin) external onlyAdminOrLoanSystem {\r\n        require(newAdmin != address(0), \"Invalid new admin\");\r\n        admin = newAdmin;\r\n    }\r\n\r\n    // No transfer or approval functions — soulbound by design\r\n}"
+      }
+    }
+  }
+}

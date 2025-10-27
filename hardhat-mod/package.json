@@ -10,5 +10,11 @@
     "hardhat": "^3.0.8",
     "typescript": "~5.8.0",
     "viem": "^2.38.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "commander": "^14.0.1",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0"
   }
 }

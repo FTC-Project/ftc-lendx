@@ -1,10 +1,10 @@
 import os
 
-# from dotenv import load_dotenv
-# load_dotenv()
-from cryptography.fernet import Fernet
 
-_key = os.environ["FERNET_KEY"].encode()
+from cryptography.fernet import Fernet
+from django.conf import settings
+
+_key = settings.FERNET_KEY.encode()
 fernet = Fernet(_key)
 
 
@@ -13,4 +13,4 @@ def encrypt_secret(secret: str) -> bytes:
 
 
 def decrypt_secret(blob: bytes) -> str:
-    return fernet.decrypt(blob).decode()
+    return fernet.decrypt(bytes(blob)).decode()

@@ -4,3 +4,7 @@ from . import start  # noqa: F401
 from . import register  # noqa: F401
 from . import linkbank  # noqa: F401
 from . import tokens  # noqa: F401
+from . import testscore  # noqa: F401
+from . import history  # noqa: F401
+from . import status  # noqa: F401
+from . import apply  # noqa: F401

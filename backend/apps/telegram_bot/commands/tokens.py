@@ -31,12 +31,14 @@ PREV: Dict[str, Optional[str]] = {S_MENU: None, S_BALANCE: S_MENU, S_TIER: S_MEN
 
 def kb_tokens_menu() -> dict:
     """Keyboard for the tokens main menu."""
-    return kb_options([
-        ("💰 View Balance", "tokens:view_balance"),
-        ("📊 View Tier & APR", "tokens:view_tier"),
-        
-        ("⬅️ Back", "tokens:back"),
-    ])
+    return kb_options(
+        [
+            ("💰 View Balance", "tokens:view_balance"),
+            ("📊 View Tier & APR", "tokens:view_tier"),
+            ("⬅️ Back", "tokens:back"),
+        ]
+    )
+
 
 @register(
     name=CMD,

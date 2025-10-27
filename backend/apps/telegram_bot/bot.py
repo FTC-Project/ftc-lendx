@@ -5,7 +5,10 @@ from functools import lru_cache
 
 from backend.apps.telegram_bot.fsm_store import FSMStore
 from backend.apps.telegram_bot.registry import all_command_metas, get_command_meta
-from backend.apps.telegram_bot.tasks import send_telegram_message_task, check_permission_and_dispatch_task
+from backend.apps.telegram_bot.tasks import (
+    send_telegram_message_task,
+    check_permission_and_dispatch_task,
+)
 
 from django.conf import settings
 
@@ -48,12 +51,10 @@ class TelegramBot:
         if not meta:
             print(f"[bot] Unknown command '{msg.command}'")
             return
-        
+
         # Enqueue non-blocking permission check + dispatch
         check_permission_and_dispatch_task.delay(
-            msg.to_payload(),
-            meta.name,
-            meta.permission
+            msg.to_payload(), meta.name, meta.permission
         )
 
     def handle_message(self, msg: TelegramMessage) -> None:
@@ -83,12 +84,10 @@ class TelegramBot:
         if not meta:
             print(f"[bot] Unknown command '{cmd_name}' in FSM")
             return
-        
+
         # Enqueue non-blocking permission check + dispatch for FSM continuation
         check_permission_and_dispatch_task.delay(
-            msg.to_payload(),
-            meta.name,
-            meta.permission
+            msg.to_payload(), meta.name, meta.permission
         )
 
     # NOTE: has_permission is no longer used - permission checks are now non-blocking

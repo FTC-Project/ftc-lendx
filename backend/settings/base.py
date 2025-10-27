@@ -10,6 +10,7 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "dev-insecure-bot-token")
 DEBUG = os.getenv("DJANGO_DEBUG", "false").lower() in {"1", "true", "yes"}
 raw_hosts = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1")
 ALLOWED_HOSTS = [h.strip() for h in raw_hosts.split(",") if h.strip()]
+FERNET_KEY = os.getenv("FERNET_KEY", "dev-insecure-fernet-key-1234567890123456")
 
 
 # raw_csrf = os.getenv("CSRF_TRUSTED_ORIGINS", "")

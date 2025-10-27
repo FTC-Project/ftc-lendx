@@ -2,6 +2,7 @@
 
 from typing import Dict
 
+
 class TokenTierCalculator:
     """
     Calculates token tier information based on token balance.

@@ -1,13 +1,14 @@
 from typing import List, Dict, Any
-from datetime import datetime, date
-from asgiref.sync import async_to_sync
+from datetime import datetime, date, timedelta
+
+from celery import shared_task
 
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.commands.register import register
 from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.flow import reply
 from backend.apps.telegram_bot.keyboards import kb_back_cancel
-from backend.apps.loans.models import Loan
+from backend.apps.loans.models import Loan, Repayment
 from backend.apps.users.models import TelegramUser
 
 
@@ -38,39 +39,35 @@ def _status_badge(state: str) -> str:
     }.get(s, "⚪ Unknown")
 
 
-async def _query_loan_history(telegram_id: int) -> List[Dict[str, Any]]:
+def _query_loan_history(telegram_id: int) -> List[Dict[str, Any]]:
     """
     Return user's loan history sorted by most recent first.
     Returns all loans regardless of state.
     """
     try:
-        user = await TelegramUser.objects.aget(telegram_id=telegram_id)
+        user = TelegramUser.objects.get(telegram_id=telegram_id)
 
-        loans = await Loan.objects.filter(user=user).order_by("-created_at").all()
+        loans = Loan.objects.filter(user=user).order_by("-created_at")
 
-        if not loans:
+        if not loans.exists():
             return []
 
         history = []
-        async for loan in loans:
+        for loan in loans:
             # Determine completion date based on state
             completed_at = None
             if loan.state == "repaid":
                 # Get the last repayment date
-                from backend.apps.loans.models import Repayment
-
                 last_repayment = (
-                    await Repayment.objects.filter(loan=loan)
+                    Repayment.objects.filter(loan=loan)
                     .order_by("-received_at")
                     .values_list("received_at", flat=True)
-                    .afirst()
+                    .first()
                 )
                 completed_at = last_repayment
             elif loan.state == "defaulted":
                 # For defaulted loans, use due_date + grace_days as approximation
                 if loan.due_date:
-                    from datetime import timedelta
-
                     completed_at = loan.due_date + timedelta(days=loan.grace_days)
 
             history.append(
@@ -136,16 +133,22 @@ class HistoryCommand(BaseCommand):
     Epic: Epic 3 - Loan Management
     """
 
-    @property
-    def task(self):
-        return None
+    name = "history"
+    description = "View your loan history"
+    permission = "user"
 
-    def handle(self, msg: TelegramMessage) -> None:
+    def handle(self, message: TelegramMessage) -> None:
+        self.task.delay(self.serialize(message))
+
+    @shared_task(queue="telegram_bot")
+    def task(message_data: dict) -> None:
+        msg = TelegramMessage.from_payload(message_data)
+
         if not msg.user_id:
             reply(msg, "Error identifying user.")
             return
 
-        history = async_to_sync(_query_loan_history)(msg.user_id)
+        history = _query_loan_history(msg.user_id)
 
         # Edge case: No loan history
         if not history:
@@ -154,7 +157,6 @@ class HistoryCommand(BaseCommand):
                 "📋 <b>Loan History</b>\n\n"
                 "You don't have any loan history yet.\n\n"
                 "Use /apply to request your first loan!",
-                reply_markup=kb_back_cancel(),
                 parse_mode="HTML",
             )
             return
@@ -184,4 +186,4 @@ class HistoryCommand(BaseCommand):
                 + f"\n\n<i>... and {len(history) - 5} more loan(s)</i>"
             )
 
-        reply(msg, txt, reply_markup=kb_back_cancel(), parse_mode="HTML")
+        reply(msg, txt, parse_mode="HTML")

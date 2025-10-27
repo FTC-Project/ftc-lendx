@@ -1,6 +1,7 @@
 from typing import Optional, Dict, Any
 from datetime import datetime, date
-from asgiref.sync import async_to_sync
+
+from celery import shared_task
 
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.commands.register import register
@@ -39,12 +40,12 @@ def _status_badge(state: str) -> str:
     }.get(s, "⚪ Unknown")
 
 
-async def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
+def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
     """Return user's most recent loan, regardless of state."""
     try:
-        user = await TelegramUser.objects.aget(telegram_id=telegram_id)
+        user = TelegramUser.objects.get(telegram_id=telegram_id)
 
-        loan = await Loan.objects.filter(user=user).order_by("-created_at").afirst()
+        loan = Loan.objects.filter(user=user).order_by("-created_at").first()
 
         if not loan:
             return None
@@ -52,13 +53,13 @@ async def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
         total_repayable = loan.amount + loan.interest_portion
         remaining = total_repayable - loan.repaid_amount
 
-        next_due = await (
+        next_due = (
             RepaymentSchedule.objects.filter(
                 loan=loan, status__in=["pending", "partial"]
             )
             .order_by("due_at")
             .values_list("due_at", flat=True)
-            .afirst()
+            .first()
         )
 
         return {
@@ -90,16 +91,22 @@ async def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
 class StatusCommand(BaseCommand):
     """Displays the user's most recent loan information (any state)."""
 
-    @property
-    def task(self):
-        return None
+    name = "status"
+    description = "Check the status of your most recent loan"
+    permission = "user"
 
-    def handle(self, msg: TelegramMessage) -> None:
+    def handle(self, message: TelegramMessage) -> None:
+        self.task.delay(self.serialize(message))
+
+    @shared_task(queue="telegram_bot")
+    def task(message_data: dict) -> None:
+        msg = TelegramMessage.from_payload(message_data)
+
         if not msg.user_id:
             reply(msg, "Error identifying user.")
             return
 
-        loan = async_to_sync(_query_latest_loan)(msg.user_id)
+        loan = _query_latest_loan(msg.user_id)
 
         if not loan:
             reply(msg, "You currently do not have any loan records.")

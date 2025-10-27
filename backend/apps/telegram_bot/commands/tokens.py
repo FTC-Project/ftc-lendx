@@ -47,6 +47,7 @@ def kb_tokens_menu() -> dict:
         ]
     }
 
+
 @register(
     name=CMD,
     aliases=[f"/{CMD}"],
@@ -171,7 +172,13 @@ class TokenCommand(BaseCommand):
 
                     set_step(fsm, msg.chat_id, CMD, S_TIER, data)
                     mark_prev_keyboard(data, msg)
-                    reply(msg, tier_message, kb_back_cancel(), data=data, parse_mode="HTML")
+                    reply(
+                        msg,
+                        tier_message,
+                        kb_back_cancel(),
+                        data=data,
+                        parse_mode="HTML",
+                    )
                     return
 
                 # Unknown callback in menu
@@ -188,7 +195,12 @@ class TokenCommand(BaseCommand):
             if step in (S_BALANCE, S_TIER):
                 # Shouldn't reach here unless unknown callback
                 mark_prev_keyboard(data, msg)
-                reply(msg, "Please use the Back button to return to the menu.", kb_back_cancel(), data=data)
+                reply(
+                    msg,
+                    "Please use the Back button to return to the menu.",
+                    kb_back_cancel(),
+                    data=data,
+                )
                 return
 
             # Unknown callback
@@ -213,7 +225,12 @@ class TokenCommand(BaseCommand):
         if step in (S_BALANCE, S_TIER):
             # User typed instead of pressing back
             mark_prev_keyboard(data, msg)
-            reply(msg, "Please use the Back button to return to the menu.", kb_back_cancel(), data=data)
+            reply(
+                msg,
+                "Please use the Back button to return to the menu.",
+                kb_back_cancel(),
+                data=data,
+            )
             return
 
         # Fallback

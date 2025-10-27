@@ -1,0 +1,36 @@
+# Git
+.git
+.github
+.gitignore
+.gitattributes
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
+.env*
+.env.example
+
+# Documentation
+docs/
+README.md
+
+# Notebooks
+notebooks/
+
+# Other
+LICENSE
+compose/
+render.yaml
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db

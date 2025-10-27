@@ -25,7 +25,6 @@ from backend.apps.telegram_bot.keyboards import kb_back_cancel, kb_options, kb_c
 from backend.apps.users.models import TelegramUser
 from backend.apps.kyc.models import KYCVerification, Document
 from backend.apps.tokens.models import CreditTrustBalance
-from backend.apps.pool.models import PoolAccount
 
 
 # -------- Flow config --------
@@ -179,12 +178,12 @@ def download_telegram_file(file_id: str) -> Tuple[bytes, str]:
     name=CMD,
     aliases=[f"/{CMD}"],
     description="User Registration + KYC",
-    permission="public",
+    permission="user",
 )
 class RegisterCommand(BaseCommand):
     name = CMD
     description = "User Registration + KYC"
-    permission = "public"
+    permission = "user"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))
@@ -345,7 +344,6 @@ class RegisterCommand(BaseCommand):
                     user.save(update_fields=fields)
 
                 # Bootstrap related records (idempotent)
-                PoolAccount.objects.get_or_create(user=user)
                 CreditTrustBalance.objects.get_or_create(user=user)
 
                 # POC “verification”: mark as verified if we have an ID doc on file
@@ -499,7 +497,7 @@ class RegisterCommand(BaseCommand):
                 blob, mime = download_telegram_file(file_id)
                 # We don't have a TelegramUser yet; create a minimal placeholder for storing Document,
                 # or use a temp approach: in this POC, we can upsert user here with basic info (first/last/id).
-                user, _ = TelegramUser.objects.get(telegram_id=msg.user_id)
+                user = TelegramUser.objects.get(telegram_id=msg.user_id)
                 # Store/replace the 'id_front' doc (idempotent-ish)
                 # If you want strict idempotency, you can upsert by kind:
                 existing = user.documents.filter(kind="id_front").first()

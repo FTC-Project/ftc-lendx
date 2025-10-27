@@ -1,6 +1,11 @@
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from .models import TelegramUser
+
+from backend.apps.telegram_bot.tasks import send_telegram_message_task
+from .models import (
+    TelegramUser,
+    Notification,
+)  # Assuming Notification is in users.models
 from backend.apps.kyc.models import KYCVerification
 
 
@@ -8,7 +13,37 @@ from backend.apps.kyc.models import KYCVerification
 @receiver(
     post_save, sender=TelegramUser, dispatch_uid="users.signals.create_related_objects"
 )
-def create_related_objects(sender, instance, created, **kwargs):
+def create_user_related_objects(sender, instance, created, **kwargs):
     if created:
         # Create a KYC Verification Object
         KYCVerification.objects.create(user=instance, status="pending")
+
+
+# When a Notification model is created, send a message to the user via Telegram
+@receiver(
+    post_save,
+    sender=Notification,
+    dispatch_uid="notifications.signals.send_notification",
+)
+def send_notification_on_creation(sender, instance, created, **kwargs):
+    """Sends a Telegram message when a new Notification object is created."""
+    if created:
+        # First check if we have sent
+        if instance.sent:
+            return
+        # Now we must use the `kind` to determine the message content
+        if instance.kind == "score_updated":
+            score = instance.payload.get("score")
+            risk = instance.payload.get("risk", "unknown")
+            if score is not None:
+                text = f"Your trust score has been updated to {score:.2f}" f" ({risk})."
+            else:
+                text = "Your trust score has been updated, but the new score is unavailable."
+        else:
+            # For other kinds, do not send a message
+            return
+        if instance.user and instance.user.chat_id:
+            send_telegram_message_task.delay(chat_id=instance.user.chat_id, text=text)
+        # Mark as sent
+        instance.sent = True
+        instance.save(update_fields=["sent"])

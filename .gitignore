@@ -67,8 +67,6 @@ Thumbs.db
 ehthumbs.db
 Thumbs.db
 
-# Docker
-.dockerignore
 
 # Testing
 .coverage

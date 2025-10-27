@@ -55,6 +55,7 @@ def reply(
     text: str,
     reply_markup: dict | None = None,
     data: dict | None = None,
+    parse_mode: str = "Markdown",
 ) -> None:
     """Send next prompt; clears previous inline keyboard; stops spinner; persists new msg_id into FSM."""
     prev_id = data.pop("prev_bot_message_id", None) if data else None
@@ -65,4 +66,5 @@ def reply(
         callback_query_id=getattr(msg, "callback_query_id", None),
         previous_message_id=prev_id,
         fsm_persist_last_msg=True,  # writes data['last_bot_message_id'] for next turn
+        parse_mode=parse_mode,
     )

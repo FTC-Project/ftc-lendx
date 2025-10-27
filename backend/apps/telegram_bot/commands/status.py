@@ -86,14 +86,14 @@ def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
     name="status",
     aliases=["/status"],
     description="Check the status of your most recent loan",
-    permission="user",
+    permission="verified_borrower",
 )
 class StatusCommand(BaseCommand):
     """Displays the user's most recent loan information (any state)."""
 
     name = "status"
     description = "Check the status of your most recent loan"
-    permission = "user"
+    permission = "verified_borrower"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))
@@ -101,10 +101,6 @@ class StatusCommand(BaseCommand):
     @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
         msg = TelegramMessage.from_payload(message_data)
-
-        if not msg.user_id:
-            reply(msg, "Error identifying user.")
-            return
 
         loan = _query_latest_loan(msg.user_id)
 

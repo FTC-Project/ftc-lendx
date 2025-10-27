@@ -5,7 +5,7 @@ from functools import lru_cache
 
 from backend.apps.telegram_bot.fsm_store import FSMStore
 from backend.apps.telegram_bot.registry import all_command_metas, get_command_meta
-from backend.apps.telegram_bot.tasks import send_telegram_message_task
+from backend.apps.telegram_bot.tasks import send_telegram_message_task, check_permission_and_dispatch_task
 
 from django.conf import settings
 
@@ -40,16 +40,21 @@ class TelegramBot:
         return inst
 
     def dispatch_command(self, msg: TelegramMessage) -> None:
-        command = self.get_command(msg.command)
-        if command:
-            if self.has_permission(command.meta, msg):
-                command.handle(msg)
-            else:
-                print(
-                    f"[bot] User {msg.user_id} is not authorized to use {msg.command}"
-                )
-        else:
+        """
+        Non-blocking command dispatch.
+        Enqueues permission check task which will then dispatch to command if authorized.
+        """
+        meta = self.command_metas.get(msg.command) or get_command_meta(msg.command)
+        if not meta:
             print(f"[bot] Unknown command '{msg.command}'")
+            return
+        
+        # Enqueue non-blocking permission check + dispatch
+        check_permission_and_dispatch_task.delay(
+            msg.to_payload(),
+            meta.name,
+            meta.permission
+        )
 
     def handle_message(self, msg: TelegramMessage) -> None:
         """Schedule the matching command handler."""
@@ -74,21 +79,20 @@ class TelegramBot:
             )
         # Otherwise route to the command handling the FSM
         cmd_name = state["command"]
-        command = self.get_command(cmd_name)
-        if command:
-            if self.has_permission(command.meta, msg):
-                command.handle(msg)
-            else:
-                print(f"[bot] User {msg.user_id} is not authorized to use {cmd_name}")
-        else:
-            print(f"[bot] Unknown command '{cmd_name}' in FSM")
-
-    def has_permission(self, meta: Optional[object], msg: TelegramMessage) -> bool:
-        """Check if the user has permission to run the command."""
+        meta = self.command_metas.get(cmd_name) or get_command_meta(cmd_name)
         if not meta:
-            return False
-        # For now, all commands are public, in future will check user role
-        return True
+            print(f"[bot] Unknown command '{cmd_name}' in FSM")
+            return
+        
+        # Enqueue non-blocking permission check + dispatch for FSM continuation
+        check_permission_and_dispatch_task.delay(
+            msg.to_payload(),
+            meta.name,
+            meta.permission
+        )
+
+    # NOTE: has_permission is no longer used - permission checks are now non-blocking
+    # and handled by check_permission_and_dispatch_task in tasks.py
 
 
 @lru_cache(maxsize=1)

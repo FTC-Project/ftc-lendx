@@ -123,7 +123,7 @@ def _format_loan_entry(loan: Dict[str, Any], index: int) -> str:
     name="history",
     aliases=["/history"],
     description="View your loan history",
-    permission="user",
+    permission="verified_borrower",
 )
 class HistoryCommand(BaseCommand):
     """
@@ -135,7 +135,7 @@ class HistoryCommand(BaseCommand):
 
     name = "history"
     description = "View your loan history"
-    permission = "user"
+    permission = "verified_borrower"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))
@@ -143,10 +143,6 @@ class HistoryCommand(BaseCommand):
     @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
         msg = TelegramMessage.from_payload(message_data)
-
-        if not msg.user_id:
-            reply(msg, "Error identifying user.")
-            return
 
         history = _query_loan_history(msg.user_id)
 

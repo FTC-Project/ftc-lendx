@@ -450,12 +450,12 @@ def handle_done(msg: TelegramMessage, fsm: FSMStore, state: dict) -> None:
     name=CMD,
     aliases=["/linkbank"],
     description="Link your bank account (AIS OAuth - mocked)",
-    permission="public",
+    permission="verified",
 )
 class LinkBankCommand(BaseCommand):
     name = CMD
     description = "Link your bank account (AIS OAuth - mocked)"
-    permission = "public"
+    permission = "verified"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))

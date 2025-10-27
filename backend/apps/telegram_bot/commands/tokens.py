@@ -33,7 +33,7 @@ def kb_tokens_menu() -> dict:
         ("💰 View Balance", "tokens:view_balance"),
         ("📊 View Tier & APR", "tokens:view_tier"),
         
-        ("⬅️ Back to Main Menu", "tokens:back"),
+        ("⬅️ Back", "tokens:back"),
     ])
 
 @register(
@@ -48,15 +48,14 @@ class TokenCommand(BaseCommand):
     permission = "public"
 
     def handle(self, message: TelegramMessage) -> None:
+        self.task.delay(self.serialize(message))
+
+    @shared_task(queue="telegram_bot")
+    def task(message_data: dict) -> None:
+        message = TelegramMessage.from_payload(message_data)
         fsm = FSMStore()
         state = fsm.get(message.chat_id)
         cb = getattr(message, "callback_data", None)
-
-        # Look up user
-        user = TelegramUser.objects.filter(telegram_id=message.user_id, is_active=True).first()
-        if not user:
-            reply(message, "❌ You don't have an account yet. Run /start to create one.")
-            return
 
         # If no state, start menu
         if not state:
@@ -125,8 +124,3 @@ class TokenCommand(BaseCommand):
         # Safety fallback
         clear_flow(fsm, message.chat_id)
         reply(message, "Session lost. Please /tokens again.")
-
-    @shared_task(queue="telegram_bot")
-    def task(message_data: dict) -> None:
-        # will implement as a shared task later 
-        pass

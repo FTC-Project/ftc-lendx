@@ -7,10 +7,11 @@ from django.utils import timezone
 import logging
 
 ##################################################
-# This services checks the on-chain CTT balance, 
+# This services checks the on-chain CTT balance,
 # and updates the off-chain DB record if different.
 ##################################################
 logger = logging.getLogger(__name__)
+
 
 class CreditTrustSyncService:
     def __init__(self):
@@ -22,7 +23,9 @@ class CreditTrustSyncService:
             on_chain = self.client.get_balance(user.wallet.address)
             off_chain_record, _ = CreditTrustBalance.objects.get_or_create(user=user)
             if off_chain_record.balance != on_chain:
-                logger.info(f"Updating {user.id} balance: {off_chain_record.balance} → {on_chain}")
+                logger.info(
+                    f"Updating {user.id} balance: {off_chain_record.balance} → {on_chain}"
+                )
                 off_chain_record.balance = on_chain
                 off_chain_record.updated_at = timezone.now()
                 off_chain_record.save()
@@ -37,8 +40,9 @@ class CreditTrustSyncService:
         for user in users:
             self.sync_user_balance(user)
 
+
 ##################################################
-# This service fetches the on-chain CTT balance, 
+# This service fetches the on-chain CTT balance,
 # for a given address, and returns it.
 ##################################################
 class CreditTrustTokenClient:

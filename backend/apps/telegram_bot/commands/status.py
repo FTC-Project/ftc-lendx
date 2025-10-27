@@ -44,11 +44,7 @@ async def _query_latest_loan(telegram_id: int) -> Optional[Dict[str, Any]]:
     try:
         user = await TelegramUser.objects.aget(telegram_id=telegram_id)
 
-        loan = await (
-            Loan.objects.filter(user=user)
-            .order_by("-created_at")
-            .afirst()
-        )
+        loan = await Loan.objects.filter(user=user).order_by("-created_at").afirst()
 
         if not loan:
             return None

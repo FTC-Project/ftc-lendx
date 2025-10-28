@@ -1,0 +1,20 @@
+{
+  "name": "hardhat-mod",
+  "version": "1.0.0",
+  "type": "module",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-ignition": "^3.0.3",
+    "@nomicfoundation/hardhat-toolbox-viem": "^5.0.0",
+    "@types/node": "^22.18.12",
+    "forge-std": "github:foundry-rs/forge-std#v1.9.4",
+    "hardhat": "^3.0.8",
+    "typescript": "~5.8.0",
+    "viem": "^2.38.3"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "commander": "^14.0.1",
+    "dotenv": "^17.2.3",
+    "ethers": "^6.15.0"
+  }
+}

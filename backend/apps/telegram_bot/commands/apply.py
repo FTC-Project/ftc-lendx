@@ -113,12 +113,12 @@ def calculate_loan_details(amount: int, term_days: int, apr: float) -> dict:
     name=CMD,
     aliases=[f"/{CMD}"],
     description="Apply for a loan",
-    permission="borrower",
+    permission="verified_borrower",
 )
 class ApplyCommand(BaseCommand):
     name = CMD
     description = "Apply for a loan"
-    permission = "borrower"
+    permission = "verified_borrower"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))

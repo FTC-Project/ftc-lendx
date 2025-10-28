@@ -178,12 +178,12 @@ def download_telegram_file(file_id: str) -> Tuple[bytes, str]:
     name=CMD,
     aliases=[f"/{CMD}"],
     description="User Registration + KYC",
-    permission="public",
+    permission="user",
 )
 class RegisterCommand(BaseCommand):
     name = CMD
     description = "User Registration + KYC"
-    permission = "public"
+    permission = "user"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))

@@ -8,16 +8,35 @@ from backend.apps.telegram_bot.tasks import send_telegram_message_task
 
 # Base command
 class BaseCommand(ABC):
+    """
+    Base class for all Telegram bot commands.
+
+    Commands should:
+    1. Implement handle() to delegate to a Celery task
+    2. Define a @shared_task decorated task() function
+    3. Set name, description, and permission class attributes
+
+    The permission check is handled non-blocking by check_permission_and_dispatch_task.
+    """
+
     name: str = ""
     description: str = ""
-    permission: str = "public"  # e.g. "public", "borrower", "lender", "admin"
+    permission: str = (
+        "public"  # e.g. "public", "user", "borrower", "verified_borrower", etc.
+    )
+
+    # task should be a @shared_task decorated function, not an instance method
+    task = None
 
     def __init__(self):
         self.fsm = FSMStore()
 
-    # This function does validation on the message before enqueueing.
     @abstractmethod
     def handle(self, message: TelegramMessage) -> None:
+        """
+        Handle incoming message by delegating to Celery task.
+        Typically: self.task.delay(self.serialize(message))
+        """
         raise NotImplementedError("Handle method must be implemented by sub-classes")
 
     @staticmethod
@@ -27,10 +46,6 @@ class BaseCommand(ABC):
     @staticmethod
     def deserialize(data: Dict[str, Any]) -> TelegramMessage:
         return TelegramMessage.from_payload(data)
-
-    @abstractmethod
-    def task(self, message_data: dict) -> None:
-        raise NotImplementedError("Task method must be implemented by sub-classes")
 
     def ask_and_wait(
         self,

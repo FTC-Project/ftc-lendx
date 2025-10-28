@@ -33,19 +33,11 @@ const config: HardhatUserConfig = {
       url: process.env.RPC_URL!,
       accounts: [process.env.ADMIN_PRIVATE_KEY!],
     },
-    hardhatMainnet: {
-      type: "edr-simulated",
-      chainType: "l1",
-    },
-    hardhatOp: {
-      type: "edr-simulated",
-      chainType: "op",
-    },
-    sepolia: {
+    xrpl_evm_testnet: {
       type: "http",
-      chainType: "l1",
-      url: configVariable("SEPOLIA_RPC_URL"),
-      accounts: [configVariable("SEPOLIA_PRIVATE_KEY")],
+      url: process.env.RPC_URL!,
+      accounts: [process.env.ADMIN_PRIVATE_KEY!],
+      chainId: 1449000,
     },
   },
 };

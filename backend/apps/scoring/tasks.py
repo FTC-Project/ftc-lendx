@@ -285,10 +285,22 @@ def start_scoring_pipeline(user_id: int):
         score_table = scorecard.table()
         factors = score_table.groupby("Variable")["Points"].sum().to_dict()
 
+        # Determine risk tier based on score
+        # Order by 'order' field to handle overlaps properly (lower order = higher priority)
         risk_tier = RiskTier.objects.filter(
             min_score__lte=score, max_score__gte=score
-        ).first()
-        risk_category = risk_tier.name if risk_tier else "High Risk"
+        ).order_by('order').first()
+        
+        # Fallback: if score doesn't match any tier, assign based on score value
+        if not risk_tier:
+            if score < 25:
+                risk_category = "High Risk"
+            elif score < 75:
+                risk_category = "Good"  # Catches 50-75 gap
+            else:
+                risk_category = "Excellent"
+        else:
+            risk_category = risk_tier.name
 
         trust_score_snapshot = TrustScoreSnapshot.objects.create(
             user=user, trust_score=score, factors=factors, risk_category=risk_category

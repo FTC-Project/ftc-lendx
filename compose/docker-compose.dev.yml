@@ -12,8 +12,6 @@ services:
       MPLCONFIGDIR: /tmp/matplotlib_config
       DB_HOST: db
       DB_PORT: "5432"
-      # Connect to Hardhat on host machine
-      WEB3_PROVIDER_URL: http://host.docker.internal:8545
     ports:
       - "8000:8000"
     volumes:
@@ -39,7 +37,6 @@ services:
       DB_PORT: "5432"
       MPLCONFIGDIR: /tmp/matplotlib_config
       # Connect to Hardhat on host machine
-      WEB3_PROVIDER_URL: http://host.docker.internal:8545
     volumes:
       - ../:/app
     depends_on:
@@ -47,8 +44,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
   celery_scoring_worker:
     build:
@@ -62,8 +57,6 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       MPLCONFIGDIR: /tmp/matplotlib_config
-      # Connect to Hardhat on host machine
-      WEB3_PROVIDER_URL: http://host.docker.internal:8545
     volumes:
       - ../:/app
     depends_on:

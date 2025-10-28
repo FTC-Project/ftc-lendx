@@ -32,16 +32,15 @@ class TelegramUser(models.Model):
 
 
 class Wallet(models.Model):
-    NETWORK_CHOICES = [("testnet", "TestNet"), ("mainnet", "MainNet")]
+    NETWORK_CHOICES = [("xrpl", "XRPL EVM")]
     user = models.OneToOneField(
         TelegramUser, on_delete=models.CASCADE, related_name="wallet"
     )
     network = models.CharField(
-        max_length=16, choices=NETWORK_CHOICES, default="testnet"
+        max_length=16, choices=NETWORK_CHOICES, default="xrpl"
     )
     address = models.CharField(max_length=64, unique=True)
     secret_encrypted = models.BinaryField()  # Fernet/AES
-    funded_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
 

@@ -56,7 +56,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             amount = instance.payload.get("amount")
             apr_bps = instance.payload.get("apr_bps")
             term_days = instance.payload.get("term_days")
-            
+            tx_hash = instance.payload.get("tx_hash")
             # Convert apr_bps to percentage (e.g., 2500 bps = 25.00%)
             apr_percent = apr_bps / 100 if apr_bps else 0
             
@@ -68,6 +68,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"💰 Amount: <b>R{amount:,}</b>\n"
                 f"📊 APR: <b>{apr_percent:.2f}%</b>\n"
                 f"📅 Term: <b>{term_days} days</b>\n\n"
+                f"🔗 Transaction Hash: <code>{tx_hash}</code>\n\n"
                 f"<i>Your loan is now being processed for funding...</i>"
             )
         
@@ -76,7 +77,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             amount = instance.payload.get("amount")
             apr_bps = instance.payload.get("apr_bps")
             term_days = instance.payload.get("term_days")
-            
+            tx_hash = instance.payload.get("tx_hash")
             apr_percent = apr_bps / 100 if apr_bps else 0
             
             text = (
@@ -87,6 +88,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"💰 Funded Amount: <b>R{amount:,}</b>\n"
                 f"📊 APR: <b>{apr_percent:.2f}%</b>\n"
                 f"📅 Term: <b>{term_days} days</b>\n\n"
+                f"🔗 Transaction Hash: <code>{tx_hash}</code>\n\n"
                 f"<i>Preparing for disbursement...</i>"
             )
         
@@ -95,7 +97,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             amount = instance.payload.get("amount")
             apr_bps = instance.payload.get("apr_bps")
             term_days = instance.payload.get("term_days")
-            
+            tx_hash = instance.payload.get("tx_hash")
             apr_percent = apr_bps / 100 if apr_bps else 0
             
             text = (
@@ -106,10 +108,19 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"💰 Disbursed Amount: <b>R{amount:,}</b>\n"
                 f"📊 Interest Rate: <b>{apr_percent:.2f}% APR</b>\n"
                 f"📅 Repayment Period: <b>{term_days} days</b>\n\n"
+                f"🔗 Transaction Hash: <code>{tx_hash}</code>\n\n"
                 f"<b>⚠️ Important:</b> Please ensure timely repayments to maintain your trust score.\n\n"
                 f"<i>The funds are now available in your account.</i>"
             )
         
+        elif instance.kind == "wallet_created":
+            address = instance.payload.get("address")
+            text = (
+                f"<b>💰 Wallet Created</b>\n\n"
+                f"Your wallet has been successfully created on the blockchain!\n\n"
+                f"<b>Wallet Address:</b>\n"
+                f"<code>{address}</code>\n"
+            )
         else:
             # For other kinds, do not send a message
             return

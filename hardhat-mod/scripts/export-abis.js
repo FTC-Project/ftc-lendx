@@ -11,7 +11,7 @@ import path from "path";
 
 // Paths
 const ARTIFACTS_DIR = "./artifacts/contracts";
-const DEPLOYMENTS_DIR = "./ignition/deployments/chain-31337";
+const DEPLOYMENTS_DIR = "./ignition/deployments/chain-1449000";
 const BACKEND_ABI_DIR = "../backend/onchain/abi";
 const BACKEND_ADDRESSES_FILE = "../backend/onchain/addresses.json";
 

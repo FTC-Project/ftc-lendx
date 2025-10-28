@@ -142,3 +142,4 @@ backend/onchain/addresses.json
 # Hardhat
 hardhat-mod/artifacts/
 hardhat-mod/ignition/deployments/
+hardhat-mod/.env.hardhat

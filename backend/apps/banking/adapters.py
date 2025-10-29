@@ -74,6 +74,31 @@ class AISClient:
         self._handle_error(r, "Token request")
         return cast(dict[str, Any], r.json())
 
+    def refresh_token(self, refresh_token: str, consent_id: Optional[str] = None) -> dict[str, Any]:
+        """
+        POST /connect/mtls/token with refresh_token grant
+
+        Refreshes an access token using a refresh token.
+        """
+        url = f"{self.base_url}/connect/mtls/token"
+        form_data = {
+            "grant_type": "refresh_token",
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "refresh_token": refresh_token,
+        }
+        if consent_id is not None:
+            form_data["consent_id"] = consent_id
+
+        r = self.session.post(
+            url,
+            data=form_data,
+            timeout=self.timeout,
+        )
+
+        self._handle_error(r, "Token refresh")
+        return cast(dict[str, Any], r.json())
+
     def post_consent(self, access_token: str, permissions: list[str]) -> dict[str, Any]:
         """
         POST /account-access-consents

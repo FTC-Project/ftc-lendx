@@ -262,11 +262,16 @@ WEB3_PROVIDER_URL = os.getenv("WEB3_PROVIDER_URL", "http://127.0.0.1:8545")
 
 # Admin wallet (for contract write operations)
 ADMIN_ADDRESS = os.getenv("ADMIN_ADDRESS", "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-ADMIN_PRIVATE_KEY = os.getenv("ADMIN_PRIVATE_KEY", "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+ADMIN_PRIVATE_KEY = os.getenv(
+    "ADMIN_PRIVATE_KEY",
+    "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+)
 
 # Burn wallet (for off-ramped tokens - in production this would be an exchange wallet)
 # Using Hardhat test account #1 as the burn wallet by default
-BURN_WALLET_ADDRESS = os.getenv("BURN_WALLET_ADDRESS", "0x70997970C51812dc3A010C7d01b50e0d17dc79C8")
+BURN_WALLET_ADDRESS = os.getenv(
+    "BURN_WALLET_ADDRESS", "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+)
 
 # Contract Addresses
 FTCTOKEN_ADDRESS = os.getenv("FTCTOKEN_ADDRESS", "")
@@ -275,7 +280,9 @@ LOANSYSTEM_ADDRESS = os.getenv("LOANSYSTEM_ADDRESS", "")
 
 # ABI Paths
 FTCTOKEN_ABI_PATH = BASE_DIR / "backend" / "onchain" / "abi" / "FTCToken.json"
-CREDITTRUST_ABI_PATH = BASE_DIR / "backend" / "onchain" / "abi" / "CreditTrustToken.json"
+CREDITTRUST_ABI_PATH = (
+    BASE_DIR / "backend" / "onchain" / "abi" / "CreditTrustToken.json"
+)
 LOANSYSTEM_ABI_PATH = BASE_DIR / "backend" / "onchain" / "abi" / "LoanSystemMVP.json"
 
 # Legacy settings for backward compatibility
@@ -283,8 +290,9 @@ WEB3_PROVIDER = WEB3_PROVIDER_URL
 CREDIT_TRUST_TOKEN_ADDRESS = CREDITTRUST_ADDRESS
 try:
     import json
+
     if CREDITTRUST_ABI_PATH.exists():
-        with open(CREDITTRUST_ABI_PATH, 'r') as f:
+        with open(CREDITTRUST_ABI_PATH, "r") as f:
             CREDIT_TRUST_TOKEN_ABI = json.load(f)
     else:
         CREDIT_TRUST_TOKEN_ABI = []

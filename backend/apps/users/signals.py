@@ -31,10 +31,10 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
         # First check if we have sent
         if instance.sent:
             return
-        
+
         text = None
         parse_mode = "HTML"  # Use HTML formatting for all messages
-        
+
         # Now we must use the `kind` to determine the message content
         if instance.kind == "score_updated":
             score = instance.payload.get("score")
@@ -50,7 +50,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                     "<b>🎯 Trust Score Updated</b>\n\n"
                     "Your trust score has been updated, but the new score is unavailable."
                 )
-        
+
         elif instance.kind == "loan_created_on_chain":
             loan_id = instance.payload.get("loan_id")
             amount = instance.payload.get("amount")
@@ -59,7 +59,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             tx_hash = instance.payload.get("tx_hash")
             # Convert apr_bps to percentage (e.g., 2500 bps = 25.00%)
             apr_percent = apr_bps / 100 if apr_bps else 0
-            
+
             text = (
                 f"<b>✅ Loan Created On-Chain</b>\n\n"
                 f"Your loan has been successfully created on the blockchain!\n\n"
@@ -71,7 +71,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"🔗 Transaction Hash: <code>{tx_hash}</code>\n\n"
                 f"<i>Your loan is now being processed for funding...</i>"
             )
-        
+
         elif instance.kind == "loan_funded_on_chain":
             loan_id = instance.payload.get("loan_id")
             amount = instance.payload.get("amount")
@@ -79,7 +79,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             term_days = instance.payload.get("term_days")
             tx_hash = instance.payload.get("tx_hash")
             apr_percent = apr_bps / 100 if apr_bps else 0
-            
+
             text = (
                 f"<b>💎 Loan Funded On-Chain</b>\n\n"
                 f"Great news! Your loan has been funded by the liquidity pool.\n\n"
@@ -91,7 +91,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"🔗 Transaction Hash: <code>{tx_hash}</code>\n\n"
                 f"<i>Preparing for disbursement...</i>"
             )
-        
+
         elif instance.kind == "loan_disbursed_on_chain":
             loan_id = instance.payload.get("loan_id")
             amount = instance.payload.get("amount")
@@ -99,7 +99,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
             term_days = instance.payload.get("term_days")
             tx_hash = instance.payload.get("tx_hash")
             apr_percent = apr_bps / 100 if apr_bps else 0
-            
+
             text = (
                 f"<b>🎉 Loan Disbursed!</b>\n\n"
                 f"Congratulations! Your loan has been successfully disbursed.\n\n"
@@ -112,7 +112,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"<b>⚠️ Important:</b> Please ensure timely repayments to maintain your trust score.\n\n"
                 f"<i>The funds are now available in your account.</i>"
             )
-        
+
         elif instance.kind == "wallet_created":
             address = instance.payload.get("address")
             text = (
@@ -124,13 +124,11 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
         else:
             # For other kinds, do not send a message
             return
-        
+
         # Send the notification if we have text and a valid chat_id
         if text and instance.user and instance.user.chat_id:
             send_telegram_message_task.delay(
-                chat_id=instance.user.chat_id, 
-                text=text,
-                parse_mode=parse_mode
+                chat_id=instance.user.chat_id, text=text, parse_mode=parse_mode
             )
         # Mark as sent
         instance.sent = True

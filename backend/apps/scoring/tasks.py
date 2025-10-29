@@ -30,7 +30,9 @@ from backend.apps.users.models import TelegramUser
 # ---------------------------
 
 
-def _refresh_oauth_token(oauth_token: OAuthToken, client: AISClient, consent_id: Optional[str] = None) -> str:
+def _refresh_oauth_token(
+    oauth_token: OAuthToken, client: AISClient, consent_id: Optional[str] = None
+) -> str:
     """
     Refresh an expired OAuth token and update the database.
     Returns the new access token.
@@ -38,20 +40,22 @@ def _refresh_oauth_token(oauth_token: OAuthToken, client: AISClient, consent_id:
     refresh_token = decrypt_secret(oauth_token.refresh_token_enc)
     if not refresh_token:
         raise ValueError("No refresh token available for token rotation")
-    
+
     token_doc = client.refresh_token(refresh_token, consent_id)
-    
+
     # Update the stored token
     access_token = token_doc.get("access_token")
-    new_refresh_token = token_doc.get("refresh_token", refresh_token)  # Some APIs return new refresh token
+    new_refresh_token = token_doc.get(
+        "refresh_token", refresh_token
+    )  # Some APIs return new refresh token
     expires_in = int(token_doc.get("expires_in", 3600))
-    
+
     oauth_token.access_token_enc = encrypt_secret(access_token)
     oauth_token.refresh_token_enc = encrypt_secret(new_refresh_token)
     oauth_token.scope = token_doc.get("scope", oauth_token.scope)
     oauth_token.expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
     oauth_token.save()
-    
+
     return access_token
 
 
@@ -184,9 +188,9 @@ def _fetch_all_transactions(
 ) -> tuple[list[dict], str]:
     """
     Robustly fetch *all* transactions, following pagination by 'next_cursor' if present.
-    Returns the concatenated list in the *external* shape (not normalized) 
+    Returns the concatenated list in the *external* shape (not normalized)
     and the potentially refreshed access token.
-    
+
     If a 401 error occurs and oauth_token is provided, attempts to refresh the token once.
     """
     all_txs: list[dict] = []
@@ -345,10 +349,12 @@ def start_scoring_pipeline(user_id: int):
 
         # Determine risk tier based on score
         # Order by 'order' field to handle overlaps properly (lower order = higher priority)
-        risk_tier = RiskTier.objects.filter(
-            min_score__lte=score, max_score__gte=score
-        ).order_by('order').first()
-        
+        risk_tier = (
+            RiskTier.objects.filter(min_score__lte=score, max_score__gte=score)
+            .order_by("order")
+            .first()
+        )
+
         # Fallback: if score doesn't match any tier, assign based on score value
         if not risk_tier:
             if score < 25:

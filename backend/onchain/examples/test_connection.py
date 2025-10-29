@@ -12,8 +12,8 @@ import sys
 import django
 
 # Setup Django
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', '..'))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "backend.settings")
 django.setup()
 
 from backend.apps.tokens.services import (
@@ -29,7 +29,7 @@ def test_connection():
     print("=" * 60)
     print("Testing Web3 Connection")
     print("=" * 60)
-    
+
     try:
         ftc = FTCTokenService()
         print(f"✅ Web3 connected")
@@ -48,32 +48,32 @@ def test_ftc_token():
     print("\n" + "=" * 60)
     print("Testing FTCToken Service")
     print("=" * 60)
-    
+
     try:
         ftc = FTCTokenService()
-        
+
         print(f"✅ FTCToken service initialized")
         print(f"   Contract address: {ftc.contract_address}")
-        
+
         # Get token info
         info = ftc.get_token_info()
         print(f"   Name: {info['name']}")
         print(f"   Symbol: {info['symbol']}")
         print(f"   Decimals: {info['decimals']}")
-        
+
         # Get owner
         owner = ftc.get_owner()
         print(f"   Owner: {owner}")
-        
+
         # Get total supply
         supply = ftc.get_total_supply()
         print(f"   Total supply: {supply}")
-        
+
         # Get admin balance
         if settings.ADMIN_ADDRESS:
             balance = ftc.get_balance(settings.ADMIN_ADDRESS)
             print(f"   Admin balance: {balance} FTCT")
-        
+
         return True
     except Exception as e:
         print(f"❌ FTCToken test failed: {e}")
@@ -85,26 +85,26 @@ def test_loan_system():
     print("\n" + "=" * 60)
     print("Testing LoanSystem Service")
     print("=" * 60)
-    
+
     try:
         loan = LoanSystemService()
-        
+
         print(f"✅ LoanSystem service initialized")
         print(f"   Contract address: {loan.contract_address}")
-        
+
         # Get admin
         admin = loan.get_admin()
         print(f"   Admin: {admin}")
-        
+
         # Get pool info
         total_pool = loan.get_total_pool()
         total_shares = loan.get_total_shares()
         next_loan_id = loan.get_next_loan_id()
-        
+
         print(f"   Total pool: {total_pool} FTCT")
         print(f"   Total shares: {total_shares}")
         print(f"   Next loan ID: {next_loan_id}")
-        
+
         return True
     except Exception as e:
         print(f"❌ LoanSystem test failed: {e}")
@@ -116,27 +116,27 @@ def test_credit_trust():
     print("\n" + "=" * 60)
     print("Testing CreditTrustToken Service")
     print("=" * 60)
-    
+
     try:
         ctt = CreditTrustTokenService()
-        
+
         print(f"✅ CreditTrustToken service initialized")
         print(f"   Contract address: {ctt.contract_address}")
-        
+
         # Get admin and loan system
         admin = ctt.get_admin()
         loan_system = ctt.get_loan_system()
-        
+
         print(f"   Admin: {admin}")
         print(f"   Loan system: {loan_system}")
-        
+
         # Check admin balance
         if settings.ADMIN_ADDRESS:
             balance = ctt.get_balance(settings.ADMIN_ADDRESS)
             initialized = ctt.is_initialized(settings.ADMIN_ADDRESS)
             print(f"   Admin CTT balance: {balance}")
             print(f"   Admin initialized: {initialized}")
-        
+
         return True
     except Exception as e:
         print(f"❌ CreditTrustToken test failed: {e}")
@@ -148,33 +148,33 @@ def test_settings():
     print("\n" + "=" * 60)
     print("Testing Django Settings")
     print("=" * 60)
-    
+
     settings_ok = True
-    
+
     # Check Web3 provider
-    if hasattr(settings, 'WEB3_PROVIDER_URL'):
+    if hasattr(settings, "WEB3_PROVIDER_URL"):
         print(f"✅ WEB3_PROVIDER_URL: {settings.WEB3_PROVIDER_URL}")
     else:
         print("❌ WEB3_PROVIDER_URL not set")
         settings_ok = False
-    
+
     # Check admin address
-    if hasattr(settings, 'ADMIN_ADDRESS') and settings.ADMIN_ADDRESS:
+    if hasattr(settings, "ADMIN_ADDRESS") and settings.ADMIN_ADDRESS:
         print(f"✅ ADMIN_ADDRESS: {settings.ADMIN_ADDRESS}")
     else:
         print("❌ ADMIN_ADDRESS not set")
         settings_ok = False
-    
+
     # Check contract addresses
-    for name in ['FTCTOKEN_ADDRESS', 'CREDITTRUST_ADDRESS', 'LOANSYSTEM_ADDRESS']:
+    for name in ["FTCTOKEN_ADDRESS", "CREDITTRUST_ADDRESS", "LOANSYSTEM_ADDRESS"]:
         if hasattr(settings, name) and getattr(settings, name):
             print(f"✅ {name}: {getattr(settings, name)}")
         else:
             print(f"❌ {name} not set")
             settings_ok = False
-    
+
     # Check ABI paths
-    for name in ['FTCTOKEN_ABI_PATH', 'CREDITTRUST_ABI_PATH', 'LOANSYSTEM_ABI_PATH']:
+    for name in ["FTCTOKEN_ABI_PATH", "CREDITTRUST_ABI_PATH", "LOANSYSTEM_ABI_PATH"]:
         if hasattr(settings, name):
             path = getattr(settings, name)
             if path.exists():
@@ -186,36 +186,36 @@ def test_settings():
         else:
             print(f"❌ {name} not set")
             settings_ok = False
-    
+
     return settings_ok
 
 
 def main():
     """Run all tests"""
     print("\n" + "🧪 Web3 Integration Test Suite" + "\n")
-    
+
     results = {
-        'Settings': test_settings(),
-        'Connection': test_connection(),
-        'FTCToken': test_ftc_token(),
-        'LoanSystem': test_loan_system(),
-        'CreditTrust': test_credit_trust(),
+        "Settings": test_settings(),
+        "Connection": test_connection(),
+        "FTCToken": test_ftc_token(),
+        "LoanSystem": test_loan_system(),
+        "CreditTrust": test_credit_trust(),
     }
-    
+
     # Summary
     print("\n" + "=" * 60)
     print("Test Summary")
     print("=" * 60)
-    
+
     passed = sum(results.values())
     total = len(results)
-    
+
     for name, result in results.items():
         status = "✅ PASS" if result else "❌ FAIL"
         print(f"{status} - {name}")
-    
+
     print(f"\nResult: {passed}/{total} tests passed")
-    
+
     if passed == total:
         print("\n🎉 All tests passed! Your Web3 integration is ready!")
         print("\n📚 Next steps:")
@@ -228,9 +228,9 @@ def main():
         print("   2. Are contracts deployed?")
         print("   3. Have you exported ABIs? (node scripts/export-abis.js)")
         print("   4. Is .env file configured correctly?")
-    
+
     print("=" * 60)
-    
+
     return passed == total
 
 
@@ -244,6 +244,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"\n\n❌ Unexpected error: {e}")
         import traceback
+
         traceback.print_exc()
         sys.exit(1)
-

@@ -37,4 +37,6 @@ def kyc_on_verified(sender, instance: KYCVerification, **kwargs):
                 address=evm_address,
                 secret_encrypted=encrypt_secret(private_key),
             )
-        Notification.objects.create(user=instance.user, kind="wallet_created", payload={"address": evm_address})
+        Notification.objects.create(
+            user=instance.user, kind="wallet_created", payload={"address": evm_address}
+        )

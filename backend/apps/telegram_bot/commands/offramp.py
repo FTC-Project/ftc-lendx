@@ -86,10 +86,10 @@ def _fmt_ftc(amount: float) -> str:
 
 
 @register(
-    name=CMD, 
-    aliases=["/offramp"], 
-    description="Convert FTC tokens to ZAR (off-ramp)", 
-    permission="verified_borrower"
+    name=CMD,
+    aliases=["/offramp"],
+    description="Convert FTC tokens to ZAR (off-ramp)",
+    permission="verified_borrower",
 )
 class OfframpCommand(BaseCommand):
     name = CMD
@@ -109,9 +109,9 @@ class OfframpCommand(BaseCommand):
         if not state:
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                
+
                 # Check if user has wallet
-                if not hasattr(user, 'wallet') or not user.wallet:
+                if not hasattr(user, "wallet") or not user.wallet:
                     mark_prev_keyboard({}, msg)
                     reply(
                         msg,
@@ -121,12 +121,12 @@ class OfframpCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Get FTC balance
                 wallet_address = user.wallet.address
                 ftc_service = FTCTokenService()
                 ftc_balance = ftc_service.get_balance(wallet_address)
-                
+
                 if ftc_balance <= 0:
                     mark_prev_keyboard({}, msg)
                     reply(
@@ -137,13 +137,13 @@ class OfframpCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Start flow with balance data
                 data = {
                     "ftc_balance": float(ftc_balance),
                 }
                 start_flow(fsm, msg.chat_id, CMD, data, S_SELECT_AMOUNT)
-                
+
                 # Show welcome message with balance
                 welcome_msg = (
                     "💱 <b>Off-Ramp FTC to ZAR</b>\n\n"
@@ -155,7 +155,7 @@ class OfframpCommand(BaseCommand):
                     "<i>In production, this would transfer funds to your bank account via an exchange. "
                     "For this MVP, we'll burn the FTC tokens to simulate the off-ramp process.</i>"
                 )
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -165,7 +165,7 @@ class OfframpCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-                
+
             except TelegramUser.DoesNotExist:
                 mark_prev_keyboard({}, msg)
                 reply(
@@ -217,15 +217,14 @@ class OfframpCommand(BaseCommand):
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
-                        "👋 <b>Exiting Off-Ramp</b>\n\n"
-                        "Off-ramp cancelled.",
+                        "👋 <b>Exiting Off-Ramp</b>\n\n" "Off-ramp cancelled.",
                         data=data,
                         parse_mode="HTML",
                     )
                     return
 
                 set_step(fsm, msg.chat_id, CMD, prev, data)
-                
+
                 if prev == S_SELECT_AMOUNT:
                     welcome_msg = (
                         "💱 <b>Off-Ramp FTC to ZAR</b>\n\n"
@@ -250,7 +249,7 @@ class OfframpCommand(BaseCommand):
             # Amount selection
             if step == S_SELECT_AMOUNT and cb.startswith("offramp:amount:"):
                 amount_str = cb.split("offramp:amount:")[1]
-                
+
                 if amount_str == "custom":
                     set_step(fsm, msg.chat_id, CMD, S_ENTER_CUSTOM, data)
                     mark_prev_keyboard(data, msg)
@@ -269,7 +268,7 @@ class OfframpCommand(BaseCommand):
                     amount = data["ftc_balance"]
                 else:
                     amount = float(amount_str)
-                
+
                 # Validate amount
                 if amount <= 0:
                     mark_prev_keyboard(data, msg)
@@ -282,7 +281,7 @@ class OfframpCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 if amount > data["ftc_balance"]:
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -296,12 +295,12 @@ class OfframpCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Store amount and move to confirmation
                 data["amount"] = amount
                 data["zar_equivalent"] = amount  # 1:1 conversion
                 set_step(fsm, msg.chat_id, CMD, S_CONFIRM_OFFRAMP, data)
-                
+
                 confirmation_msg = (
                     "💱 <b>Off-Ramp Confirmation</b>\n\n"
                     f"<b>Amount to Off-Ramp:</b> {_fmt_ftc(amount)}\n"
@@ -314,7 +313,7 @@ class OfframpCommand(BaseCommand):
                     "the FTC tokens to simulate the off-ramp process.</i>\n\n"
                     "Confirm to proceed?"
                 )
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -331,11 +330,11 @@ class OfframpCommand(BaseCommand):
                     user = TelegramUser.objects.get(telegram_id=msg.user_id)
                     wallet_address = user.wallet.address
                     user_private_key = decrypt_secret(user.wallet.secret_encrypted)
-                    
+
                     amount = data["amount"]
-                    
+
                     set_step(fsm, msg.chat_id, CMD, S_PROCESSING, data)
-                    
+
                     # Show processing message
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -346,24 +345,30 @@ class OfframpCommand(BaseCommand):
                         data=data,
                         parse_mode="HTML",
                     )
-                    
+
                     # Transfer FTC tokens to dummy "burn" wallet
                     # In production, this would go to an exchange wallet
                     ftc_service = FTCTokenService()
-                    burn_wallet = settings.BURN_WALLET_ADDRESS  # Dummy wallet for off-ramped tokens
-                    
-                    logger.info(f"[Offramp] Transferring {amount} FTC from user {user.telegram_id} to burn wallet")
+                    burn_wallet = (
+                        settings.BURN_WALLET_ADDRESS
+                    )  # Dummy wallet for off-ramped tokens
+
+                    logger.info(
+                        f"[Offramp] Transferring {amount} FTC from user {user.telegram_id} to burn wallet"
+                    )
                     burn_result = ftc_service.transfer(
                         from_address=wallet_address,
                         to_address=burn_wallet,
                         amount=amount,
                         private_key=user_private_key,
                     )
-                    logger.info(f"[Offramp] Transferred {amount} FTC to burn wallet, tx: {burn_result['tx_hash']}")
-                    
+                    logger.info(
+                        f"[Offramp] Transferred {amount} FTC to burn wallet, tx: {burn_result['tx_hash']}"
+                    )
+
                     # Get new balance
                     new_balance = ftc_service.get_balance(wallet_address)
-                    
+
                     # Success message
                     success_msg = (
                         "✅ <b>Off-Ramp Successful!</b>\n\n"
@@ -379,7 +384,7 @@ class OfframpCommand(BaseCommand):
                         "been transferred to a designated off-ramp wallet.</i>\n\n"
                         "Use /balance to view your updated wallet balance."
                     )
-                    
+
                     clear_flow(fsm, msg.chat_id)
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -389,9 +394,11 @@ class OfframpCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                    
+
                 except Exception as e:
-                    logger.error(f"[Offramp] Error processing off-ramp: {e}", exc_info=True)
+                    logger.error(
+                        f"[Offramp] Error processing off-ramp: {e}", exc_info=True
+                    )
                     clear_flow(fsm, msg.chat_id)
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -420,10 +427,10 @@ class OfframpCommand(BaseCommand):
         if step == S_ENTER_CUSTOM:
             try:
                 amount = float(text)
-                
+
                 if amount <= 0:
                     raise ValueError("Amount must be greater than 0")
-                
+
                 if amount > data["ftc_balance"]:
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -437,12 +444,12 @@ class OfframpCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Store amount and move to confirmation
                 data["amount"] = amount
                 data["zar_equivalent"] = amount  # 1:1 conversion
                 set_step(fsm, msg.chat_id, CMD, S_CONFIRM_OFFRAMP, data)
-                
+
                 confirmation_msg = (
                     "💱 <b>Off-Ramp Confirmation</b>\n\n"
                     f"<b>Amount to Off-Ramp:</b> {_fmt_ftc(amount)}\n"
@@ -455,7 +462,7 @@ class OfframpCommand(BaseCommand):
                     "the FTC tokens to simulate the off-ramp process.</i>\n\n"
                     "Confirm to proceed?"
                 )
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -465,7 +472,7 @@ class OfframpCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-                
+
             except ValueError:
                 mark_prev_keyboard(data, msg)
                 reply(
@@ -497,4 +504,3 @@ class OfframpCommand(BaseCommand):
             "Your session has expired. Please use /offramp to start again.",
             parse_mode="HTML",
         )
-

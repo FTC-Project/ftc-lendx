@@ -158,7 +158,7 @@ def _check_user_permission(user_id: int, permission_level: str) -> bool:
         # Must be active (accepted TOS)
         if not user.is_active:
             return False
-        
+
         # If admin, return True
         if user.role == "admin":
             return True
@@ -232,14 +232,14 @@ def _get_permission_error_message(permission_level: str) -> str:
 def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
     """
     Process loan creation on-chain asynchronously with retry logic.
-    
+
     This task:
     1. Creates the loan on-chain
     2. Marks it as funded
     3. Disburses funds to the borrower
     4. Updates the loan state in the database
     5. Notifies the user of success or failure
-    
+
     Args:
         loan_id: UUID of the loan to process
         chat_id: Telegram chat ID to send notifications to
@@ -248,48 +248,50 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
     from backend.apps.loans.models import Loan
     from backend.apps.tokens.services.loan_system import LoanSystemService
     from backend.apps.users.models import Notification
-    
+
     logger = logging.getLogger(__name__)
-    
+
     try:
         logger.info(f"[OnChain] Processing loan {loan_id}")
-        
+
         # Get the loan
         loan = Loan.objects.get(id=loan_id)
         user = loan.user
-        
+
         # Check if user has a wallet
-        if not hasattr(user, 'wallet') or not user.wallet:
+        if not hasattr(user, "wallet") or not user.wallet:
             error_msg = (
                 "❌ <b>On-Chain Processing Failed</b>\n\n"
                 f"<b>Loan ID:</b> <code>{str(loan.id)[:8]}...</code>\n\n"
                 "You don't have a wallet configured. Please contact support."
             )
             send_telegram_message_task.delay(
-                chat_id=chat_id,
-                text=error_msg,
-                parse_mode="HTML"
+                chat_id=chat_id, text=error_msg, parse_mode="HTML"
             )
             loan.state = "declined"
             loan.save(update_fields=["state"])
             return
-        
+
         loan_system = LoanSystemService()
-        
+
         # Step 1: Create loan on-chain
-        logger.info(f"[OnChain] Creating loan on-chain: {loan.amount} FTC, {loan.apr_bps}bps, {loan.term_days}d")
+        logger.info(
+            f"[OnChain] Creating loan on-chain: {loan.amount} FTC, {loan.apr_bps}bps, {loan.term_days}d"
+        )
         onchain_loan_id, create_result = loan_system.create_loan(
             borrower_address=user.wallet.address,
             amount=loan.amount,
             apr_bps=loan.apr_bps,
             term_days=loan.term_days,
         )
-        logger.info(f"[OnChain] Created loan with on-chain ID {onchain_loan_id}, tx: {create_result['tx_hash']}")
-        
+        logger.info(
+            f"[OnChain] Created loan with on-chain ID {onchain_loan_id}, tx: {create_result['tx_hash']}"
+        )
+
         # Update loan with on-chain ID
         loan.onchain_loan_id = onchain_loan_id
         loan.save(update_fields=["onchain_loan_id"])
-        
+
         # Create notification
         Notification.objects.create(
             user=user,
@@ -299,44 +301,48 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
                 "amount": loan.amount,
                 "apr_bps": loan.apr_bps,
                 "term_days": loan.term_days,
-                "tx_hash": create_result['tx_hash']
+                "tx_hash": create_result["tx_hash"],
             },
         )
-        
+
         # Step 2: Mark as funded
         logger.info(f"[OnChain] Marking loan {onchain_loan_id} as funded")
         fund_result = loan_system.mark_funded(onchain_loan_id)
-        logger.info(f"[OnChain] Funded loan {onchain_loan_id}, tx: {fund_result['tx_hash']}")
-        
+        logger.info(
+            f"[OnChain] Funded loan {onchain_loan_id}, tx: {fund_result['tx_hash']}"
+        )
+
         Notification.objects.create(
             user=user,
             kind="loan_funded_on_chain",
             payload={
                 "loan_id": onchain_loan_id,
                 "amount": loan.amount,
-                "tx_hash": fund_result['tx_hash']
+                "tx_hash": fund_result["tx_hash"],
             },
         )
-        
+
         # Step 3: Disburse to borrower
         logger.info(f"[OnChain] Disbursing loan {onchain_loan_id} to borrower")
         disburse_result = loan_system.mark_disbursed_ftct(onchain_loan_id)
-        logger.info(f"[OnChain] Disbursed loan {onchain_loan_id}, tx: {disburse_result['tx_hash']}")
-        
+        logger.info(
+            f"[OnChain] Disbursed loan {onchain_loan_id}, tx: {disburse_result['tx_hash']}"
+        )
+
         Notification.objects.create(
             user=user,
             kind="loan_disbursed_on_chain",
             payload={
                 "loan_id": onchain_loan_id,
                 "amount": loan.amount,
-                "tx_hash": disburse_result['tx_hash']
+                "tx_hash": disburse_result["tx_hash"],
             },
         )
-        
+
         # Step 4: Update loan state to disbursed
         loan.state = "disbursed"
         loan.save(update_fields=["state"])
-        
+
         # Send success message to user
         success_msg = (
             "🎉 <b>Loan Approved & Funded!</b>\n\n"
@@ -353,15 +359,13 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
             f"3️⃣ Disburse: <code>{disburse_result['tx_hash'][:16]}...</code>\n\n"
             "<i>Use /balance to check your wallet balance.</i>"
         )
-        
+
         send_telegram_message_task.delay(
-            chat_id=chat_id,
-            text=success_msg,
-            parse_mode="HTML"
+            chat_id=chat_id, text=success_msg, parse_mode="HTML"
         )
-        
+
         logger.info(f"[OnChain] Successfully processed loan {loan.id}")
-        
+
     except Loan.DoesNotExist:
         logger.error(f"[OnChain] Loan {loan_id} not found")
         error_msg = (
@@ -369,19 +373,19 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
             "Loan not found in database. Please contact support."
         )
         send_telegram_message_task.delay(
-            chat_id=chat_id,
-            text=error_msg,
-            parse_mode="HTML"
+            chat_id=chat_id, text=error_msg, parse_mode="HTML"
         )
-        
+
     except Exception as e:
         logger.error(f"[OnChain] Error processing loan {loan_id}: {e}", exc_info=True)
-        
+
         # Retry the task if we haven't exceeded max_retries
         if self.request.retries < self.max_retries:
-            logger.info(f"[OnChain] Retrying loan {loan_id} (attempt {self.request.retries + 1}/{self.max_retries})")
+            logger.info(
+                f"[OnChain] Retrying loan {loan_id} (attempt {self.request.retries + 1}/{self.max_retries})"
+            )
             raise self.retry(exc=e)
-        
+
         # Max retries exceeded - mark loan as failed and notify user
         try:
             loan = Loan.objects.get(id=loan_id)
@@ -389,7 +393,7 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
             loan.save(update_fields=["state"])
         except:
             pass
-        
+
         error_msg = (
             "❌ <b>On-Chain Processing Failed</b>\n\n"
             f"<b>Loan ID:</b> <code>{str(loan_id)[:8]}...</code>\n\n"
@@ -397,9 +401,7 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
             f"<i>Error: {str(e)}</i>\n\n"
             "Your application has been cancelled. Please try again later or contact support."
         )
-        
+
         send_telegram_message_task.delay(
-            chat_id=chat_id,
-            text=error_msg,
-            parse_mode="HTML"
+            chat_id=chat_id, text=error_msg, parse_mode="HTML"
         )

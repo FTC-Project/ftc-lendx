@@ -73,7 +73,7 @@ def kb_loan_selector(loans: list) -> dict:
         remaining = total_due - loan.repaid_amount
         label = f"💰 R{loan.amount:,} • Due: {_fmt_date(loan.due_date)} • Remaining: R{remaining:,}"
         rows.append([{"text": label, "callback_data": f"repay:select:{loan.id}"}])
-    
+
     return kb_back_cancel(rows)
 
 
@@ -104,13 +104,14 @@ class RepayCommand(BaseCommand):
         if not state:
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                
+
                 # Get active loans (disbursed state)
-                active_loans = list(Loan.objects.filter(
-                    user=user,
-                    state="disbursed"
-                ).order_by("-created_at"))
-                
+                active_loans = list(
+                    Loan.objects.filter(user=user, state="disbursed").order_by(
+                        "-created_at"
+                    )
+                )
+
                 if not active_loans:
                     mark_prev_keyboard({}, msg)
                     reply(
@@ -121,18 +122,18 @@ class RepayCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 data = {
                     "loan_ids": [str(loan.id) for loan in active_loans],
                 }
                 start_flow(fsm, msg.chat_id, CMD, data, S_SELECT_LOAN)
-                
+
                 # Show loan selection
                 header = (
                     "💳 <b>Loan Repayment</b>\n\n"
                     "Select the loan you'd like to repay:\n"
                 )
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -142,7 +143,7 @@ class RepayCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-                
+
             except TelegramUser.DoesNotExist:
                 mark_prev_keyboard({}, msg)
                 reply(msg, "User not found. Please /start first.")
@@ -175,22 +176,23 @@ class RepayCommand(BaseCommand):
                     mark_prev_keyboard(data, msg)
                     reply(msg, "👋 Exiting repayment flow.", data=data)
                     return
-                
+
                 # Go back to previous step
                 set_step(fsm, msg.chat_id, CMD, prev, data)
-                
+
                 if prev == S_SELECT_LOAN:
                     user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                    active_loans = list(Loan.objects.filter(
-                        user=user,
-                        state="disbursed"
-                    ).order_by("-created_at"))
-                    
+                    active_loans = list(
+                        Loan.objects.filter(user=user, state="disbursed").order_by(
+                            "-created_at"
+                        )
+                    )
+
                     header = (
                         "💳 <b>Loan Repayment</b>\n\n"
                         "Select the loan you'd like to repay:\n"
                     )
-                    
+
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
@@ -204,11 +206,11 @@ class RepayCommand(BaseCommand):
             # Loan selection
             if step == S_SELECT_LOAN and cb.startswith("repay:select:"):
                 loan_id = cb.split("repay:select:")[1]
-                
+
                 try:
                     loan = Loan.objects.get(id=loan_id, state="disbursed")
                     user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                    
+
                     # Check if loan has onchain_loan_id
                     if not loan.onchain_loan_id:
                         mark_prev_keyboard(data, msg)
@@ -221,7 +223,7 @@ class RepayCommand(BaseCommand):
                             parse_mode="HTML",
                         )
                         return
-                    
+
                     # Calculate interest using on-chain formula (to match contract exactly)
                     loan_service = LoanSystemService()
                     onchain_interest = loan_service.calculate_interest(
@@ -229,28 +231,30 @@ class RepayCommand(BaseCommand):
                         apr_bps=loan.apr_bps,
                         term_days=loan.term_days,
                     )
-                    
+
                     # Calculate total due and remaining using on-chain values
                     onchain_total = Decimal(str(loan.amount)) + onchain_interest
                     remaining_decimal = onchain_total - Decimal(str(loan.repaid_amount))
-                    
+
                     # Database values for display
                     total_due = loan.amount + loan.interest_portion
                     remaining = total_due - loan.repaid_amount
-                    
+
                     # Use on-chain calculation for FTC amount to avoid rounding issues
                     ftc_amount = float(remaining_decimal)
-                    
+
                     # Log any discrepancy between database and on-chain calculations
                     if abs(float(onchain_interest) - loan.interest_portion) > 0.01:
                         logger.warning(
                             f"Interest mismatch for loan {loan.id}: "
                             f"DB={loan.interest_portion}, OnChain={onchain_interest}"
                         )
-                    
+
                     # Check if repayment is on time
-                    is_on_time = timezone.now() <= loan.due_date if loan.due_date else True
-                    
+                    is_on_time = (
+                        timezone.now() <= loan.due_date if loan.due_date else True
+                    )
+
                     # Store in data
                     data["loan_id"] = loan_id
                     data["loan_amount"] = loan.amount
@@ -262,14 +266,14 @@ class RepayCommand(BaseCommand):
                     data["onchain_loan_id"] = loan.onchain_loan_id
                     data["is_on_time"] = is_on_time
                     data["due_date"] = _fmt_date(loan.due_date)
-                    
+
                     set_step(fsm, msg.chat_id, CMD, S_CONFIRM_AMOUNT, data)
-                    
+
                     # Show confirmation
                     # Calculate interest amount correctly with decimals
                     interest_amount = float(onchain_interest)
                     total_amount = loan.amount + interest_amount
-                    
+
                     confirmation_text = (
                         f"💰 <b>Repayment Confirmation</b>\n\n"
                         f"<b>Loan ID:</b> <code>{loan_id[:8]}...</code>\n"
@@ -286,14 +290,16 @@ class RepayCommand(BaseCommand):
                         f"<b>Due Date:</b> {data['due_date']}\n"
                         f"<b>Status:</b> {'✅ On Time' if is_on_time else '⚠️ Late'}\n\n"
                     )
-                    
+
                     if is_on_time:
-                        confirmation_text += "<i>✨ Paying on time will boost your credit score!</i>\n\n"
+                        confirmation_text += (
+                            "<i>✨ Paying on time will boost your credit score!</i>\n\n"
+                        )
                     else:
                         confirmation_text += "<i>⚠️ This payment is late. Your credit score may be affected.</i>\n\n"
-                    
+
                     confirmation_text += "Confirm to proceed with repayment."
-                    
+
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
@@ -303,7 +309,7 @@ class RepayCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                    
+
                 except Loan.DoesNotExist:
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -318,8 +324,8 @@ class RepayCommand(BaseCommand):
                 try:
                     user = TelegramUser.objects.get(telegram_id=msg.user_id)
                     loan = Loan.objects.get(id=data["loan_id"])
-                    
-                    if not hasattr(user, 'wallet') or not user.wallet:
+
+                    if not hasattr(user, "wallet") or not user.wallet:
                         mark_prev_keyboard(data, msg)
                         reply(
                             msg,
@@ -329,12 +335,12 @@ class RepayCommand(BaseCommand):
                             parse_mode="HTML",
                         )
                         return
-                    
+
                     wallet_address = user.wallet.address
                     user_private_key = decrypt_secret(user.wallet.secret_encrypted)
-                    
+
                     set_step(fsm, msg.chat_id, CMD, S_PROCESSING, data)
-                    
+
                     # Show processing message
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -346,15 +352,15 @@ class RepayCommand(BaseCommand):
                         data=data,
                         parse_mode="HTML",
                     )
-                    
+
                     # Initialize services
                     ftc_service = FTCTokenService()
                     loan_service = LoanSystemService()
-                    
+
                     ftc_amount = data["ftc_amount"]
                     onchain_loan_id = data["onchain_loan_id"]
                     is_on_time = data["is_on_time"]
-                    
+
                     # Check FTC balance
                     user_ftc_balance = ftc_service.get_balance(wallet_address)
                     if user_ftc_balance < Decimal(str(ftc_amount)):
@@ -370,16 +376,18 @@ class RepayCommand(BaseCommand):
                         )
                         clear_flow(fsm, msg.chat_id)
                         return
-                    
+
                     # Log repayment details for debugging
                     logger.info(
                         f"[Repay] Processing repayment for loan {loan.id} (on-chain ID: {onchain_loan_id})\n"
                         f"  Principal: {loan.amount}, APR: {loan.apr_bps}bps, Term: {loan.term_days}d\n"
                         f"  FTC Amount to send: {ftc_amount}"
                     )
-                    
+
                     # STEP 1: Approve LoanSystem to spend FTC
-                    logger.info(f"[Repay] User {user.telegram_id} approving {ftc_amount} FTC for loan {loan.id}")
+                    logger.info(
+                        f"[Repay] User {user.telegram_id} approving {ftc_amount} FTC for loan {loan.id}"
+                    )
                     approve_result = ftc_service.approve(
                         owner_address=wallet_address,
                         spender_address=settings.LOANSYSTEM_ADDRESS,
@@ -387,12 +395,14 @@ class RepayCommand(BaseCommand):
                         private_key=user_private_key,
                     )
                     logger.info(f"[Repay] Approved: {approve_result['tx_hash']}")
-                    
+
                     # STEP 2: Mark repaid on-chain
                     # Since they might not have enough XRP, we need to send some for gas
                     user_xrp_balance = ftc_service.web3.eth.get_balance(wallet_address)
-                    if user_xrp_balance < ftc_service.web3.to_wei(0.05, 'ether'):
-                        logger.info(f"[Repay] User likely does not have enough XRP to pay for gas, skipping repayment")
+                    if user_xrp_balance < ftc_service.web3.to_wei(0.05, "ether"):
+                        logger.info(
+                            f"[Repay] User likely does not have enough XRP to pay for gas, skipping repayment"
+                        )
                         # Reply that the user can use /buyftc to be credited with XRP for gas
                         mark_prev_keyboard(data, msg)
                         reply(
@@ -403,8 +413,10 @@ class RepayCommand(BaseCommand):
                             parse_mode="HTML",
                         )
                         return
-                    
-                    logger.info(f"[Repay] Marking loan {onchain_loan_id} as repaid on-chain with {ftc_amount} FTC")
+
+                    logger.info(
+                        f"[Repay] Marking loan {onchain_loan_id} as repaid on-chain with {ftc_amount} FTC"
+                    )
                     repay_result = loan_service.mark_repaid_ftct(
                         loan_id=onchain_loan_id,
                         on_time=is_on_time,
@@ -412,57 +424,61 @@ class RepayCommand(BaseCommand):
                         borrower_address=wallet_address,
                         borrower_private_key=user_private_key,
                     )
-                    logger.info(f"[Repay] Repaid successfully: {repay_result['tx_hash']}")
-                    
+                    logger.info(
+                        f"[Repay] Repaid successfully: {repay_result['tx_hash']}"
+                    )
+
                     # STEP 3: Update database
                     # Use the actual amount we paid (from on-chain calculation)
                     loan.repaid_amount += int(ftc_amount)
-                    
+
                     # Update interest_portion to match on-chain value if different
                     if abs(data["onchain_interest"] - loan.interest_portion) > 0.01:
                         logger.info(
                             f"[Repay] Updating interest_portion from {loan.interest_portion} to {data['onchain_interest']}"
                         )
                         loan.interest_portion = int(data["onchain_interest"])
-                    
+
                     # Check if fully repaid (using on-chain calculation)
                     total_due_onchain = loan.amount + loan.interest_portion
                     if loan.repaid_amount >= total_due_onchain:
                         loan.state = "repaid"
                         logger.info(f"[Repay] Loan {loan.id} marked as fully repaid")
-                    
+
                     loan.save()
-                    
+
                     # Create repayment record
                     repayment = Repayment.objects.create(
                         loan=loan,
                         amount=int(ftc_amount),
                         method="telegram",
-                        tx_hash=repay_result['tx_hash'],
+                        tx_hash=repay_result["tx_hash"],
                         meta={
                             "on_time": is_on_time,
                             "ftc_amount": ftc_amount,
-                            "approve_tx": approve_result['tx_hash'],
+                            "approve_tx": approve_result["tx_hash"],
                             "onchain_interest": data["onchain_interest"],
-                        }
+                        },
                     )
-                    
+
                     # Create loan event
                     LoanEvent.objects.create(
                         loan=loan,
-                        name="repaid" if loan.state == "repaid" else "partial_repayment",
+                        name=(
+                            "repaid" if loan.state == "repaid" else "partial_repayment"
+                        ),
                         details={
                             "amount": int(ftc_amount),
                             "ftc_amount": ftc_amount,
-                            "tx_hash": repay_result['tx_hash'],
+                            "tx_hash": repay_result["tx_hash"],
                             "on_time": is_on_time,
                             "onchain_interest": data["onchain_interest"],
-                        }
+                        },
                     )
-                    
+
                     # Calculate remaining balance
                     remaining_balance = total_due_onchain - loan.repaid_amount
-                    
+
                     # Success message
                     success_text = (
                         f"✅ <b>Repayment Successful!</b>\n\n"
@@ -477,7 +493,7 @@ class RepayCommand(BaseCommand):
                         f"2️⃣ Repayment: <code>{repay_result['tx_hash'][:16]}...</code>\n\n"
                         f"━━━━━━━━━━━━━━━━━━━━\n\n"
                     )
-                    
+
                     if loan.state == "repaid":
                         success_text += (
                             f"🎉 <b>Loan Fully Repaid!</b>\n\n"
@@ -490,7 +506,7 @@ class RepayCommand(BaseCommand):
                             f"📊 <b>Remaining Balance:</b> R{remaining_balance:.2f}\n\n"
                             f"Use /repay again to make another payment."
                         )
-                    
+
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
@@ -498,21 +514,28 @@ class RepayCommand(BaseCommand):
                         data=data,
                         parse_mode="HTML",
                     )
-                    
+
                     # Trigger credit score update after successful repayment
                     from backend.apps.scoring.tasks import start_scoring_pipeline
+
                     try:
                         start_scoring_pipeline.delay(user.id)
-                        logger.info(f"[Repay] Triggered credit scoring update for user {user.id}")
+                        logger.info(
+                            f"[Repay] Triggered credit scoring update for user {user.id}"
+                        )
                     except Exception as scoring_error:
-                        logger.error(f"[Repay] Failed to trigger scoring update: {scoring_error}")
+                        logger.error(
+                            f"[Repay] Failed to trigger scoring update: {scoring_error}"
+                        )
                         # Don't fail the repayment if scoring fails
-                    
+
                     clear_flow(fsm, msg.chat_id)
                     return
-                    
+
                 except Exception as e:
-                    logger.error(f"[Repay] Error processing repayment: {e}", exc_info=True)
+                    logger.error(
+                        f"[Repay] Error processing repayment: {e}", exc_info=True
+                    )
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
@@ -528,7 +551,7 @@ class RepayCommand(BaseCommand):
 
         # Text input (ignore, user should use buttons)
         text = (msg.text or "").strip()
-        
+
         if step in (S_SELECT_LOAN, S_CONFIRM_AMOUNT):
             mark_prev_keyboard(data, msg)
             reply(
@@ -541,4 +564,3 @@ class RepayCommand(BaseCommand):
         # Fallback
         clear_flow(fsm, msg.chat_id)
         reply(msg, "Session lost. Please use /repay to start again.")
-

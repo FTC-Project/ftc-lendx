@@ -47,8 +47,6 @@ def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
         )
 
 
-
-
 # On create loan in our DB, create the loan on chain using the LoanSystemService
 @receiver(post_save, sender=Loan, dispatch_uid="create_loan_on_chain")
 def create_loan_on_chain(sender, instance: Loan, created, **kwargs):
@@ -66,20 +64,38 @@ def create_loan_on_chain(sender, instance: Loan, created, **kwargs):
     Notification.objects.create(
         user=loan.user,
         kind="loan_created_on_chain",
-        payload={"loan_id": loan_id, "amount": loan.amount, "apr_bps": loan.apr_bps, "term_days": loan.term_days, "tx_hash": result['tx_hash']},
+        payload={
+            "loan_id": loan_id,
+            "amount": loan.amount,
+            "apr_bps": loan.apr_bps,
+            "term_days": loan.term_days,
+            "tx_hash": result["tx_hash"],
+        },
     )
     loan_system.mark_funded(loan_id)
     # Now it's technically funded, another notification to the user
     Notification.objects.create(
         user=loan.user,
         kind="loan_funded_on_chain",
-        payload={"loan_id": loan_id, "amount": loan.amount, "apr_bps": loan.apr_bps, "term_days": loan.term_days, "tx_hash": result['tx_hash']},
+        payload={
+            "loan_id": loan_id,
+            "amount": loan.amount,
+            "apr_bps": loan.apr_bps,
+            "term_days": loan.term_days,
+            "tx_hash": result["tx_hash"],
+        },
     )
     loan_system.mark_disbursed_ftct(loan_id)
     Notification.objects.create(
         user=loan.user,
         kind="loan_disbursed_on_chain",
-        payload={"loan_id": loan_id, "amount": loan.amount, "apr_bps": loan.apr_bps, "term_days": loan.term_days, "tx_hash": result['tx_hash']},
+        payload={
+            "loan_id": loan_id,
+            "amount": loan.amount,
+            "apr_bps": loan.apr_bps,
+            "term_days": loan.term_days,
+            "tx_hash": result["tx_hash"],
+        },
     )
     # Update the state to Disbursed and store the onchain id
     loan.state = "disbursed"

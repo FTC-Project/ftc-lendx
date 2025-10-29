@@ -80,13 +80,13 @@ def prompt_for(step: str, data: Optional[Dict[str, Any]]) -> str:
 
 
 def render_offer_summary(data: dict) -> str:
-    amount = data.get('amount', 0)
-    term_days = data.get('term_days', 0)
-    apr = data.get('apr', 0)
-    total_repayable = data.get('total_repayable', 0)
-    interest = data.get('interest', 0)
-    due_date = data.get('due_date', 'N/A')
-    
+    amount = data.get("amount", 0)
+    term_days = data.get("term_days", 0)
+    apr = data.get("apr", 0)
+    total_repayable = data.get("total_repayable", 0)
+    interest = data.get("interest", 0)
+    due_date = data.get("due_date", "N/A")
+
     return (
         f"📋 <b>Loan Offer Summary</b>\n\n"
         f"<i>Note: We denote amounts in ZAR, but you are taking out the loan in FTC.</i>\n\n"
@@ -198,7 +198,13 @@ class ApplyCommand(BaseCommand):
             }
             start_flow(fsm, msg.chat_id, CMD, data, S_AMOUNT)
             mark_prev_keyboard(data, msg)
-            reply(msg, prompt_for(S_AMOUNT, data), kb_back_cancel(), data=data, parse_mode="HTML")
+            reply(
+                msg,
+                prompt_for(S_AMOUNT, data),
+                kb_back_cancel(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         # Guard: other command owns this chat
@@ -215,7 +221,7 @@ class ApplyCommand(BaseCommand):
                 clear_flow(fsm, msg.chat_id)
                 mark_prev_keyboard(data, msg)
                 reply(
-                    msg, 
+                    msg,
                     "❌ <b>Application Cancelled</b>\n\n"
                     "Your loan application has been cancelled.\n\n"
                     "Use /apply to start a new application.",
@@ -230,7 +236,7 @@ class ApplyCommand(BaseCommand):
                     clear_flow(fsm, msg.chat_id)
                     mark_prev_keyboard(data, msg)
                     reply(
-                        msg, 
+                        msg,
                         "👋 <b>Exiting Application</b>\n\n"
                         "Loan application cancelled.",
                         data=data,
@@ -296,7 +302,14 @@ class ApplyCommand(BaseCommand):
                         msg,
                         render_repayment_schedule(data),
                         kb_back_cancel(
-                            [[{"text": "« Back to Offer", "callback_data": "flow:back"}]]
+                            [
+                                [
+                                    {
+                                        "text": "« Back to Offer",
+                                        "callback_data": "flow:back",
+                                    }
+                                ]
+                            ]
                         ),
                         data=data,
                         parse_mode="HTML",
@@ -324,9 +337,9 @@ class ApplyCommand(BaseCommand):
                         # Temporarily disconnect signal to prevent automatic on-chain processing
                         from django.db.models.signals import post_save
                         from backend.apps.loans.signals import create_loan_on_chain
-                        
+
                         post_save.disconnect(create_loan_on_chain, sender=Loan)
-                        
+
                         try:
                             loan = Loan.objects.create(
                                 user=user,
@@ -353,19 +366,21 @@ class ApplyCommand(BaseCommand):
                                 RepaymentSchedule.objects.create(
                                     loan=loan,
                                     installment_no=item["installment_no"],
-                                    due_at=datetime.datetime.strptime(item["due_at"], "%Y-%m-%d"),
+                                    due_at=datetime.datetime.strptime(
+                                        item["due_at"], "%Y-%m-%d"
+                                    ),
                                     amount_due=item["amount_due"],
                                 )
                         finally:
                             # Reconnect signal
                             post_save.connect(create_loan_on_chain, sender=Loan)
 
-                    
-                    
                     # Process on-chain asynchronously
-                    logger.info(f"[Apply] Triggering async on-chain processing for loan {loan.id}")
+                    logger.info(
+                        f"[Apply] Triggering async on-chain processing for loan {loan.id}"
+                    )
                     process_loan_onchain.delay(str(loan.id), msg.chat_id)
-                    
+
                 except Exception as e:
                     logger.error(f"[Apply] Error creating loan: {e}", exc_info=True)
                     clear_flow(fsm, msg.chat_id)
@@ -383,7 +398,7 @@ class ApplyCommand(BaseCommand):
 
             mark_prev_keyboard(data, msg)
             reply(
-                msg, 
+                msg,
                 "⚠️ <i>Unsupported action. Please use the buttons.</i>",
                 data=data,
                 parse_mode="HTML",
@@ -400,7 +415,13 @@ class ApplyCommand(BaseCommand):
                 data["amount"] = amount
                 set_step(fsm, msg.chat_id, CMD, S_TERM, data)
                 mark_prev_keyboard(data, msg)
-                reply(msg, prompt_for(S_TERM, data), kb_back_cancel(), data=data, parse_mode="HTML")
+                reply(
+                    msg,
+                    prompt_for(S_TERM, data),
+                    kb_back_cancel(),
+                    data=data,
+                    parse_mode="HTML",
+                )
             except (ValueError, TypeError):
                 mark_prev_keyboard(data, msg)
                 reply(
@@ -427,7 +448,13 @@ class ApplyCommand(BaseCommand):
 
                 set_step(fsm, msg.chat_id, CMD, S_OFFER, data)
                 mark_prev_keyboard(data, msg)
-                reply(msg, render_offer_summary(data), get_offer_keyboard(), data=data, parse_mode="HTML")
+                reply(
+                    msg,
+                    render_offer_summary(data),
+                    get_offer_keyboard(),
+                    data=data,
+                    parse_mode="HTML",
+                )
             except (ValueError, TypeError):
                 mark_prev_keyboard(data, msg)
                 reply(
@@ -471,7 +498,7 @@ class ApplyCommand(BaseCommand):
 
         clear_flow(fsm, msg.chat_id)
         reply(
-            msg, 
+            msg,
             "❌ <b>Session Lost</b>\n\n"
             "Your session has expired. Please use /apply to start again.",
             parse_mode="HTML",

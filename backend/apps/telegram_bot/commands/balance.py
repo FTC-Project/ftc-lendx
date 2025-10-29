@@ -44,8 +44,8 @@ class BalanceCommand(BaseCommand):
         try:
             # Get user and wallet
             user = TelegramUser.objects.get(telegram_id=msg.user_id)
-            
-            if not hasattr(user, 'wallet') or not user.wallet:
+
+            if not hasattr(user, "wallet") or not user.wallet:
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -57,20 +57,19 @@ class BalanceCommand(BaseCommand):
                 return
 
             wallet_address = user.wallet.address
-            
+
             # Fetch on-chain balances
             try:
                 # Get FTC balance
                 ftc_service = FTCTokenService()
                 ftc_balance = ftc_service.get_balance(wallet_address)
-                
+
                 # Get CTT balance
                 ctt_client = CreditTrustTokenClient()
                 # Weidly CTT is in units of 10^18, so we need to divide by 10^18 to get the actual balance
                 ctt_balance = ctt_client.get_balance(wallet_address) / 10**18
                 xrp_balance = ftc_service.web3.from_wei(
-                    ftc_service.web3.eth.get_balance(wallet_address), 
-                    'ether'
+                    ftc_service.web3.eth.get_balance(wallet_address), "ether"
                 )
                 # Format the response message
                 message_text = (
@@ -87,7 +86,7 @@ class BalanceCommand(BaseCommand):
                     f"━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"<i>These are your on-chain token balances fetched directly from the blockchain.</i>"
                 )
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -95,14 +94,16 @@ class BalanceCommand(BaseCommand):
                     data=data,
                     parse_mode="HTML",
                 )
-                
+
                 logger.info(
                     f"Balance check for user {user.telegram_id}: "
                     f"FTC={ftc_balance}, CTT={ctt_balance}"
                 )
-                
+
             except Exception as e:
-                logger.error(f"Error fetching balances for user {user.telegram_id}: {e}")
+                logger.error(
+                    f"Error fetching balances for user {user.telegram_id}: {e}"
+                )
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -113,14 +114,13 @@ class BalanceCommand(BaseCommand):
                     data=data,
                     parse_mode="HTML",
                 )
-                
+
         except TelegramUser.DoesNotExist:
             logger.error(f"User not found: {msg.user_id}")
             mark_prev_keyboard(data, msg)
             reply(
                 msg,
-                "❌ <b>User Not Found</b>\n\n"
-                "Please register first using /start",
+                "❌ <b>User Not Found</b>\n\n" "Please register first using /start",
                 data=data,
                 parse_mode="HTML",
             )
@@ -134,4 +134,3 @@ class BalanceCommand(BaseCommand):
                 data=data,
                 parse_mode="HTML",
             )
-

@@ -36,9 +36,7 @@ class Wallet(models.Model):
     user = models.OneToOneField(
         TelegramUser, on_delete=models.CASCADE, related_name="wallet"
     )
-    network = models.CharField(
-        max_length=16, choices=NETWORK_CHOICES, default="xrpl"
-    )
+    network = models.CharField(max_length=16, choices=NETWORK_CHOICES, default="xrpl")
     address = models.CharField(max_length=64, unique=True)
     secret_encrypted = models.BinaryField()  # Fernet/AES
     created_at = models.DateTimeField(auto_now_add=True)

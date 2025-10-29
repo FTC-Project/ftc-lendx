@@ -6,17 +6,19 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('users', '0005_telegramuser_chat_id'),
+        ("users", "0005_telegramuser_chat_id"),
     ]
 
     operations = [
         migrations.RemoveField(
-            model_name='wallet',
-            name='funded_at',
+            model_name="wallet",
+            name="funded_at",
         ),
         migrations.AlterField(
-            model_name='wallet',
-            name='network',
-            field=models.CharField(choices=[('xrpl', 'XRPL EVM')], default='xrpl', max_length=16),
+            model_name="wallet",
+            name="network",
+            field=models.CharField(
+                choices=[("xrpl", "XRPL EVM")], default="xrpl", max_length=16
+            ),
         ),
     ]

@@ -74,7 +74,9 @@ class AISClient:
         self._handle_error(r, "Token request")
         return cast(dict[str, Any], r.json())
 
-    def refresh_token(self, refresh_token: str, consent_id: Optional[str] = None) -> dict[str, Any]:
+    def refresh_token(
+        self, refresh_token: str, consent_id: Optional[str] = None
+    ) -> dict[str, Any]:
         """
         POST /connect/mtls/token with refresh_token grant
 

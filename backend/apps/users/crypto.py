@@ -17,9 +17,8 @@ def decrypt_secret(blob: bytes) -> str:
     return fernet.decrypt(bytes(blob)).decode()
 
 
+RPC_URL = settings.WEB3_PROVIDER_URL
 
-
-RPC_URL = settings.WEB3_PROVIDER_URL 
 
 def create_new_user_wallet() -> tuple[str, str]:
     """

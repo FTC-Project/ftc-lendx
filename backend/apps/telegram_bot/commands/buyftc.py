@@ -76,7 +76,10 @@ def kb_confirm_purchase(amount: float, xrp_cost: float) -> dict:
 
 
 @register(
-    name=CMD, aliases=["/buyftc"], description="Buy FTC tokens with XRP", permission="public"
+    name=CMD,
+    aliases=["/buyftc"],
+    description="Buy FTC tokens with XRP",
+    permission="public",
 )
 class BuyFTCCommand(BaseCommand):
     name = CMD
@@ -95,13 +98,13 @@ class BuyFTCCommand(BaseCommand):
         # Start flow
         if not state:
             data = {}
-            
+
             # Check if user is KYC verified
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                
+
                 # Check if user has KYC record and is verified
-                if not hasattr(user, 'kyc') or user.kyc.status != 'verified':
+                if not hasattr(user, "kyc") or user.kyc.status != "verified":
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
@@ -112,9 +115,9 @@ class BuyFTCCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Check if user has wallet
-                if not hasattr(user, 'wallet') or not user.wallet:
+                if not hasattr(user, "wallet") or not user.wallet:
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
@@ -124,20 +127,20 @@ class BuyFTCCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
-                
+
                 wallet_address = user.wallet.address
-                
+
                 # Initialize FTC service
                 ftc_service = FTCTokenService()
-                
+
                 # Check user's XRP balance
                 xrp_balance_wei = ftc_service.web3.eth.get_balance(wallet_address)
-                xrp_balance = float(ftc_service.web3.from_wei(xrp_balance_wei, 'ether'))
-                
+                xrp_balance = float(ftc_service.web3.from_wei(xrp_balance_wei, "ether"))
+
                 # Store wallet info in data
-                data['wallet_address'] = wallet_address
-                data['xrp_balance'] = xrp_balance
-                
+                data["wallet_address"] = wallet_address
+                data["xrp_balance"] = xrp_balance
+
                 # If user has no or very low XRP, send them test XRP
                 if xrp_balance < 1.0:
                     start_flow(fsm, msg.chat_id, CMD, data, S_CHECK_BALANCE)
@@ -155,31 +158,43 @@ class BuyFTCCommand(BaseCommand):
                         data=data,
                         parse_mode="HTML",
                     )
-                    
+
                     # Send test XRP from admin wallet
                     try:
-                        admin_account = ftc_service.get_account_from_private_key(settings.ADMIN_PRIVATE_KEY)
-                        gas_amount = ftc_service.web3.to_wei(5, 'ether')
-                        
+                        admin_account = ftc_service.get_account_from_private_key(
+                            settings.ADMIN_PRIVATE_KEY
+                        )
+                        gas_amount = ftc_service.web3.to_wei(5, "ether")
+
                         tx = {
-                            'from': settings.ADMIN_ADDRESS,
-                            'to': wallet_address,
-                            'value': gas_amount,
-                            'gas': 21000,
-                            'gasPrice': ftc_service.web3.eth.gas_price,
-                            'nonce': ftc_service.web3.eth.get_transaction_count(settings.ADMIN_ADDRESS),
-                            'chainId': ftc_service.web3.eth.chain_id,
+                            "from": settings.ADMIN_ADDRESS,
+                            "to": wallet_address,
+                            "value": gas_amount,
+                            "gas": 21000,
+                            "gasPrice": ftc_service.web3.eth.gas_price,
+                            "nonce": ftc_service.web3.eth.get_transaction_count(
+                                settings.ADMIN_ADDRESS
+                            ),
+                            "chainId": ftc_service.web3.eth.chain_id,
                         }
-                        
+
                         signed_tx = admin_account.sign_transaction(tx)
-                        tx_hash = ftc_service.web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-                        receipt = ftc_service.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-                        
+                        tx_hash = ftc_service.web3.eth.send_raw_transaction(
+                            signed_tx.raw_transaction
+                        )
+                        receipt = ftc_service.web3.eth.wait_for_transaction_receipt(
+                            tx_hash, timeout=120
+                        )
+
                         # Update balance
-                        new_xrp_balance_wei = ftc_service.web3.eth.get_balance(wallet_address)
-                        new_xrp_balance = float(ftc_service.web3.from_wei(new_xrp_balance_wei, 'ether'))
-                        data['xrp_balance'] = new_xrp_balance
-                        
+                        new_xrp_balance_wei = ftc_service.web3.eth.get_balance(
+                            wallet_address
+                        )
+                        new_xrp_balance = float(
+                            ftc_service.web3.from_wei(new_xrp_balance_wei, "ether")
+                        )
+                        data["xrp_balance"] = new_xrp_balance
+
                         # Move to amount selection
                         set_step(fsm, msg.chat_id, CMD, S_SELECT_AMOUNT, data)
                         mark_prev_keyboard(data, msg)
@@ -196,9 +211,11 @@ class BuyFTCCommand(BaseCommand):
                             parse_mode="HTML",
                         )
                         return
-                        
+
                     except Exception as e:
-                        logger.error(f"[BuyFTC] Failed to send test XRP: {e}", exc_info=True)
+                        logger.error(
+                            f"[BuyFTC] Failed to send test XRP: {e}", exc_info=True
+                        )
                         mark_prev_keyboard(data, msg)
                         reply(
                             msg,
@@ -209,7 +226,7 @@ class BuyFTCCommand(BaseCommand):
                             parse_mode="HTML",
                         )
                         return
-                
+
                 # User has sufficient XRP, proceed to amount selection
                 start_flow(fsm, msg.chat_id, CMD, data, S_SELECT_AMOUNT)
                 mark_prev_keyboard(data, msg)
@@ -226,14 +243,13 @@ class BuyFTCCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-                
+
             except TelegramUser.DoesNotExist:
                 logger.error(f"User not found: {msg.user_id}")
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "❌ <b>User Not Found</b>\n\n"
-                    "Please register first using /start",
+                    "❌ <b>User Not Found</b>\n\n" "Please register first using /start",
                     data=data,
                     parse_mode="HTML",
                 )
@@ -268,7 +284,7 @@ class BuyFTCCommand(BaseCommand):
         # Handle amount selection
         if step == S_SELECT_AMOUNT and cb and cb.startswith("buyftc:amount:"):
             amount_str = cb.split("buyftc:amount:", 1)[1]
-            
+
             if amount_str == "custom":
                 # Ask user to enter custom amount
                 set_step(fsm, msg.chat_id, CMD, S_ENTER_CUSTOM, data)
@@ -279,7 +295,11 @@ class BuyFTCCommand(BaseCommand):
                     "Please enter the amount of FTC you want to buy.\n\n"
                     "📊 <b>Valid range:</b> 1 - 300 FTC\n\n"
                     "<i>Type a number and send it.</i>",
-                    {"inline_keyboard": [[{"text": "❌ Cancel", "callback_data": "flow:cancel"}]]},
+                    {
+                        "inline_keyboard": [
+                            [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]
+                        ]
+                    },
                     data=data,
                     parse_mode="HTML",
                 )
@@ -288,12 +308,12 @@ class BuyFTCCommand(BaseCommand):
                 # Pre-selected amount
                 try:
                     amount = float(amount_str)
-                    data['ftc_amount'] = amount
+                    data["ftc_amount"] = amount
                     xrp_cost = amount * 0.01  # 1 FTC = 0.01 XRP
-                    data['xrp_cost'] = xrp_cost
-                    
+                    data["xrp_cost"] = xrp_cost
+
                     # Check if user has enough XRP
-                    xrp_balance = data.get('xrp_balance', 0)
+                    xrp_balance = data.get("xrp_balance", 0)
                     if xrp_balance < xrp_cost:
                         mark_prev_keyboard(data, msg)
                         reply(
@@ -307,7 +327,7 @@ class BuyFTCCommand(BaseCommand):
                             parse_mode="HTML",
                         )
                         return
-                    
+
                     # Move to confirmation
                     set_step(fsm, msg.chat_id, CMD, S_CONFIRM_PURCHASE, data)
                     mark_prev_keyboard(data, msg)
@@ -339,7 +359,7 @@ class BuyFTCCommand(BaseCommand):
         if step == S_ENTER_CUSTOM and text:
             try:
                 amount = float(text)
-                
+
                 # Validate range
                 if amount < 1 or amount > 300:
                     mark_prev_keyboard(data, msg)
@@ -348,18 +368,22 @@ class BuyFTCCommand(BaseCommand):
                         f"❌ <b>Invalid Amount</b>\n\n"
                         f"You entered: {amount}\n\n"
                         f"Please enter a number between 1 and 300.",
-                        {"inline_keyboard": [[{"text": "❌ Cancel", "callback_data": "flow:cancel"}]]},
+                        {
+                            "inline_keyboard": [
+                                [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]
+                            ]
+                        },
                         data=data,
                         parse_mode="HTML",
                     )
                     return
-                
-                data['ftc_amount'] = amount
+
+                data["ftc_amount"] = amount
                 xrp_cost = amount * 0.01  # 1 FTC = 0.01 XRP
-                data['xrp_cost'] = xrp_cost
-                
+                data["xrp_cost"] = xrp_cost
+
                 # Check if user has enough XRP
-                xrp_balance = data.get('xrp_balance', 0)
+                xrp_balance = data.get("xrp_balance", 0)
                 if xrp_balance < xrp_cost:
                     mark_prev_keyboard(data, msg)
                     reply(
@@ -368,12 +392,16 @@ class BuyFTCCommand(BaseCommand):
                         f"You need {xrp_cost:.4f} XRP to buy {amount:,.0f} FTC.\n"
                         f"Your balance: {xrp_balance:.4f} XRP\n\n"
                         f"Please enter a smaller amount.",
-                        {"inline_keyboard": [[{"text": "❌ Cancel", "callback_data": "flow:cancel"}]]},
+                        {
+                            "inline_keyboard": [
+                                [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]
+                            ]
+                        },
                         data=data,
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Move to confirmation
                 set_step(fsm, msg.chat_id, CMD, S_CONFIRM_PURCHASE, data)
                 mark_prev_keyboard(data, msg)
@@ -391,14 +419,18 @@ class BuyFTCCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-                
+
             except ValueError:
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
                     "❌ <b>Invalid Input</b>\n\n"
                     "Please enter a valid number between 1 and 300.",
-                    {"inline_keyboard": [[{"text": "❌ Cancel", "callback_data": "flow:cancel"}]]},
+                    {
+                        "inline_keyboard": [
+                            [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]
+                        ]
+                    },
                     data=data,
                     parse_mode="HTML",
                 )
@@ -408,13 +440,13 @@ class BuyFTCCommand(BaseCommand):
         if step == S_CONFIRM_PURCHASE and cb == "buyftc:confirm:yes":
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                wallet_address = data['wallet_address']
-                ftc_amount = data['ftc_amount']
-                xrp_cost = data['xrp_cost']
-                
+                wallet_address = data["wallet_address"]
+                ftc_amount = data["ftc_amount"]
+                xrp_cost = data["xrp_cost"]
+
                 # Decrypt user's private key
                 user_private_key = decrypt_secret(user.wallet.secret_encrypted)
-                
+
                 set_step(fsm, msg.chat_id, CMD, S_PROCESSING, data)
                 mark_prev_keyboard(data, msg)
                 reply(
@@ -427,29 +459,37 @@ class BuyFTCCommand(BaseCommand):
                     data=data,
                     parse_mode="HTML",
                 )
-                
+
                 # Initialize service
                 ftc_service = FTCTokenService()
-                
+
                 # STEP 1: User sends XRP to admin
-                logger.info(f"[BuyFTC] User {wallet_address} sending {xrp_cost} XRP to admin")
-                user_account = ftc_service.get_account_from_private_key(user_private_key)
-                
+                logger.info(
+                    f"[BuyFTC] User {wallet_address} sending {xrp_cost} XRP to admin"
+                )
+                user_account = ftc_service.get_account_from_private_key(
+                    user_private_key
+                )
+
                 xrp_transfer_tx = {
-                    'from': wallet_address,
-                    'to': settings.ADMIN_ADDRESS,
-                    'value': ftc_service.web3.to_wei(xrp_cost, 'ether'),
-                    'gas': 21000,
-                    'gasPrice': ftc_service.web3.eth.gas_price,
-                    'nonce': ftc_service.web3.eth.get_transaction_count(wallet_address),
-                    'chainId': ftc_service.web3.eth.chain_id,
+                    "from": wallet_address,
+                    "to": settings.ADMIN_ADDRESS,
+                    "value": ftc_service.web3.to_wei(xrp_cost, "ether"),
+                    "gas": 21000,
+                    "gasPrice": ftc_service.web3.eth.gas_price,
+                    "nonce": ftc_service.web3.eth.get_transaction_count(wallet_address),
+                    "chainId": ftc_service.web3.eth.chain_id,
                 }
-                
+
                 signed_xrp_tx = user_account.sign_transaction(xrp_transfer_tx)
-                xrp_tx_hash = ftc_service.web3.eth.send_raw_transaction(signed_xrp_tx.raw_transaction)
-                xrp_receipt = ftc_service.web3.eth.wait_for_transaction_receipt(xrp_tx_hash, timeout=120)
+                xrp_tx_hash = ftc_service.web3.eth.send_raw_transaction(
+                    signed_xrp_tx.raw_transaction
+                )
+                xrp_receipt = ftc_service.web3.eth.wait_for_transaction_receipt(
+                    xrp_tx_hash, timeout=120
+                )
                 logger.info(f"[BuyFTC] XRP transfer: {xrp_tx_hash.hex()}")
-                
+
                 # STEP 2: Admin mints FTC to user
                 logger.info(f"[BuyFTC] Minting {ftc_amount} FTC to {wallet_address}")
                 mint_result = ftc_service.mint(
@@ -457,12 +497,12 @@ class BuyFTCCommand(BaseCommand):
                     amount=ftc_amount,
                 )
                 logger.info(f"[BuyFTC] Minted: {mint_result['tx_hash']}")
-                
+
                 # Get updated balances
                 ftc_balance = ftc_service.get_balance(wallet_address)
                 xrp_balance_wei = ftc_service.web3.eth.get_balance(wallet_address)
-                xrp_balance = float(ftc_service.web3.from_wei(xrp_balance_wei, 'ether'))
-                
+                xrp_balance = float(ftc_service.web3.from_wei(xrp_balance_wei, "ether"))
+
                 # Success message
                 clear_flow(fsm, msg.chat_id)
                 mark_prev_keyboard(data, msg)
@@ -483,7 +523,7 @@ class BuyFTCCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-                
+
             except Exception as e:
                 logger.error(f"[BuyFTC] Error during purchase: {e}", exc_info=True)
                 clear_flow(fsm, msg.chat_id)
@@ -512,8 +552,8 @@ class BuyFTCCommand(BaseCommand):
 
         if step == S_CONFIRM_PURCHASE:
             mark_prev_keyboard(data, msg)
-            ftc_amount = data.get('ftc_amount', 0)
-            xrp_cost = data.get('xrp_cost', 0)
+            ftc_amount = data.get("ftc_amount", 0)
+            xrp_cost = data.get("xrp_cost", 0)
             reply(
                 msg,
                 f"🔍 <b>Confirm Purchase</b>\n\n"

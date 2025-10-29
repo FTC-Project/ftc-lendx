@@ -11,3 +11,5 @@ from . import history  # noqa: F401
 from . import status  # noqa: F401
 from . import apply  # noqa: F401
 from . import repay  # noqa: F401
+from . import buyftc  # noqa: F401
+from . import offramp  # noqa: F401

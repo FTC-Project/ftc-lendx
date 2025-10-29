@@ -66,7 +66,8 @@ class BalanceCommand(BaseCommand):
                 
                 # Get CTT balance
                 ctt_client = CreditTrustTokenClient()
-                ctt_balance = ctt_client.get_balance(wallet_address)
+                # Weidly CTT is in units of 10^18, so we need to divide by 10^18 to get the actual balance
+                ctt_balance = ctt_client.get_balance(wallet_address) / 10**18
                 xrp_balance = ftc_service.web3.from_wei(
                     ftc_service.web3.eth.get_balance(wallet_address), 
                     'ether'

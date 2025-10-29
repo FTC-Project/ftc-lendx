@@ -266,6 +266,10 @@ class RepayCommand(BaseCommand):
                     set_step(fsm, msg.chat_id, CMD, S_CONFIRM_AMOUNT, data)
                     
                     # Show confirmation
+                    # Calculate interest amount correctly with decimals
+                    interest_amount = float(onchain_interest)
+                    total_amount = loan.amount + interest_amount
+                    
                     confirmation_text = (
                         f"💰 <b>Repayment Confirmation</b>\n\n"
                         f"<b>Loan ID:</b> <code>{loan_id[:8]}...</code>\n"
@@ -273,10 +277,10 @@ class RepayCommand(BaseCommand):
                         f"━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"<b>Loan Details:</b>\n"
                         f"• Principal: {_fmt_money(loan.amount)}\n"
-                        f"• Interest (on-chain): {_fmt_money(int(onchain_interest))}\n"
-                        f"• Total Due: {_fmt_money(int(onchain_total))}\n"
+                        f"• Interest (on-chain): R{interest_amount:.2f}\n"
+                        f"• Total Due: R{total_amount:.2f}\n"
                         f"• Already Paid: {_fmt_money(loan.repaid_amount)}\n\n"
-                        f"<b>Remaining Balance:</b> {_fmt_money(int(remaining_decimal))}\n\n"
+                        f"<b>Remaining Balance:</b> R{float(remaining_decimal):.2f}\n\n"
                         f"━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"<b>Payment Amount:</b> {_fmt_ftc(ftc_amount)}\n"
                         f"<b>Due Date:</b> {data['due_date']}\n"
@@ -387,25 +391,18 @@ class RepayCommand(BaseCommand):
                     # STEP 2: Mark repaid on-chain
                     # Since they might not have enough XRP, we need to send some for gas
                     user_xrp_balance = ftc_service.web3.eth.get_balance(wallet_address)
-                    if user_xrp_balance < ftc_service.web3.to_wei(0.01, 'ether'):
-                        logger.info(f"[Repay] Sending gas money (XRP) to {wallet_address}")
-                        admin_account = ftc_service.get_account_from_private_key(settings.ADMIN_PRIVATE_KEY)
-                        
-                        # Send 0.1 XRP for gas
-                        gas_amount = ftc_service.web3.to_wei(0.1, 'ether')
-                        tx = {
-                            'from': settings.ADMIN_ADDRESS,
-                            'to': wallet_address,
-                            'value': gas_amount,
-                            'gas': 21000,
-                            'gasPrice': ftc_service.web3.eth.gas_price,
-                            'nonce': ftc_service.web3.eth.get_transaction_count(settings.ADMIN_ADDRESS),
-                            'chainId': ftc_service.web3.eth.chain_id,
-                        }
-                        signed_tx = admin_account.sign_transaction(tx)
-                        tx_hash = ftc_service.web3.eth.send_raw_transaction(signed_tx.raw_transaction)
-                        ftc_service.web3.eth.wait_for_transaction_receipt(tx_hash, timeout=120)
-                        logger.info(f"[Repay] Sent gas: {tx_hash.hex()}")
+                    if user_xrp_balance < ftc_service.web3.to_wei(0.05, 'ether'):
+                        logger.info(f"[Repay] User likely does not have enough XRP to pay for gas, skipping repayment")
+                        # Reply that the user can use /buyftc to be credited with XRP for gas
+                        mark_prev_keyboard(data, msg)
+                        reply(
+                            msg,
+                            "❌ <b>Insufficient XRP Balance</b>\n\n"
+                            "You do not have enough XRP to pay for gas. Please use /buyftc to be credited with XRP for gas.",
+                            data=data,
+                            parse_mode="HTML",
+                        )
+                        return
                     
                     logger.info(f"[Repay] Marking loan {onchain_loan_id} as repaid on-chain with {ftc_amount} FTC")
                     repay_result = loan_service.mark_repaid_ftct(
@@ -472,9 +469,9 @@ class RepayCommand(BaseCommand):
                         f"<b>Loan ID:</b> <code>{data['loan_id'][:8]}...</code>\n\n"
                         f"━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"<b>Payment Details:</b>\n"
-                        f"• Amount Paid: {_fmt_money(int(ftc_amount))}\n"
+                        f"• Amount Paid: R{ftc_amount:.2f}\n"
                         f"• FTC Used: {_fmt_ftc(ftc_amount)}\n"
-                        f"• New Balance: {_fmt_money(remaining_balance)}\n\n"
+                        f"• New Balance: R{remaining_balance:.2f}\n\n"
                         f"<b>Transactions:</b>\n"
                         f"1️⃣ Approve: <code>{approve_result['tx_hash'][:16]}...</code>\n"
                         f"2️⃣ Repayment: <code>{repay_result['tx_hash'][:16]}...</code>\n\n"
@@ -490,7 +487,7 @@ class RepayCommand(BaseCommand):
                             success_text += f"\n✨ Your credit score has been boosted for on-time payment!"
                     else:
                         success_text += (
-                            f"📊 <b>Remaining Balance:</b> {_fmt_money(remaining_balance)}\n\n"
+                            f"📊 <b>Remaining Balance:</b> R{remaining_balance:.2f}\n\n"
                             f"Use /repay again to make another payment."
                         )
                     
@@ -501,6 +498,15 @@ class RepayCommand(BaseCommand):
                         data=data,
                         parse_mode="HTML",
                     )
+                    
+                    # Trigger credit score update after successful repayment
+                    from backend.apps.scoring.tasks import start_scoring_pipeline
+                    try:
+                        start_scoring_pipeline.delay(user.id)
+                        logger.info(f"[Repay] Triggered credit scoring update for user {user.id}")
+                    except Exception as scoring_error:
+                        logger.error(f"[Repay] Failed to trigger scoring update: {scoring_error}")
+                        # Don't fail the repayment if scoring fails
                     
                     clear_flow(fsm, msg.chat_id)
                     return

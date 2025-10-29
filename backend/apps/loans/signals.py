@@ -1,6 +1,7 @@
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
+from backend.apps.tokens.services.credittrust_sync import CreditTrustTokenClient
 from backend.apps.tokens.services.loan_system import LoanSystemService
 from .models import Loan, Repayment, LoanEvent
 from backend.apps.tokens.models import TokenEvent
@@ -32,13 +33,15 @@ def repayment_reconcile(sender, instance: Repayment, created, **kwargs):
         if loan.due_date:
             past_due = (timezone.now() - loan.due_date).days
             on_time = past_due <= max(0, loan.grace_days)
-        token_units = loan.amount // 100
+        ctt_client = CreditTrustTokenClient()
+        # Weidly CTT is in units of 10^18, so we need to divide by 10^18 to get the actual balance
+        token_units = ctt_client.get_balance(loan.user.wallet.address) / 10**18
         TokenEvent.objects.create(
             user=loan.user,
             kind=(
                 "mint" if on_time else "mint_partial"
             ),  # half-credit could be handled in amount calc
-            amount=token_units if on_time else max(1, token_units // 2),
+            amount=token_units,
             reason="loan_repaid_on_time" if on_time else "loan_repaid_late",
             meta={"loan_id": str(loan.id)},
         )

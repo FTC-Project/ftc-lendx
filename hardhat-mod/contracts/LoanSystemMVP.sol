@@ -322,7 +322,9 @@ contract LoanSystemMVP {
 
         // Reputation update via CreditTrustToken
         // MVP rule: mint principal amount on on-time repayment; mint half if late.
-        uint256 trustMint = onTime ? ln.principal : (ln.principal / 2);
+        // ln.principal is in wei, so we divide by 1e18 to get the actual loan amount
+        uint256 principalInTokens = ln.principal / 1e18;
+        uint256 trustMint = onTime ? principalInTokens : (principalInTokens / 2);
         if (trustMint > 0) {
             ctt.mint(ln.borrower, trustMint);
         }
@@ -344,7 +346,10 @@ contract LoanSystemMVP {
         ln.state = State.Repaid;
         totalPool += totalDue;
 
-        uint256 trustMint = onTime ? ln.principal : (ln.principal / 2);
+        // Mint credit trust tokens based on principal in human-readable units (divide by 10^18)
+        // ln.principal is in wei, so we divide by 1e18 to get the actual loan amount
+        uint256 principalInTokens = ln.principal / 1e18;
+        uint256 trustMint = onTime ? principalInTokens : (principalInTokens / 2);
         if (trustMint > 0) ctt.mint(ln.borrower, trustMint);
 
         emit LoanRepaid(id, ln.borrower, ln.principal, interest, onTime);
@@ -362,7 +367,9 @@ contract LoanSystemMVP {
 
         // Reputation penalty via CreditTrustToken
         // MVP rule: burn principal amount on default.
-        ctt.burn(ln.borrower, ln.principal);
+        // ln.principal is in wei, so we divide by 1e18 to get the actual loan amount
+        uint256 principalInTokens = ln.principal / 1e18;
+        ctt.burn(ln.borrower, principalInTokens);
 
         emit LoanDefaulted(id, ln.borrower, ln.principal);
     }

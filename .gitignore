@@ -134,3 +134,12 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# Onchain
+backend/onchain/abi/
+backend/onchain/addresses.json
+
+# Hardhat
+hardhat-mod/artifacts/
+hardhat-mod/ignition/deployments/
+hardhat-mod/.env.hardhat

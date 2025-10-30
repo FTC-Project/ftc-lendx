@@ -21,13 +21,42 @@ from backend.apps.scoring.models import (
     TrustScoreSnapshot,
 )
 from backend.apps.tokens.models import CreditTrustBalance
-from backend.apps.users.crypto import decrypt_secret
+from backend.apps.users.crypto import decrypt_secret, encrypt_secret
 from backend.apps.users.models import TelegramUser
 
 
 # ---------------------------
 # Helpers
 # ---------------------------
+
+
+def _refresh_oauth_token(
+    oauth_token: OAuthToken, client: AISClient, consent_id: Optional[str] = None
+) -> str:
+    """
+    Refresh an expired OAuth token and update the database.
+    Returns the new access token.
+    """
+    refresh_token = decrypt_secret(oauth_token.refresh_token_enc)
+    if not refresh_token:
+        raise ValueError("No refresh token available for token rotation")
+
+    token_doc = client.refresh_token(refresh_token, consent_id)
+
+    # Update the stored token
+    access_token = token_doc.get("access_token")
+    new_refresh_token = token_doc.get(
+        "refresh_token", refresh_token
+    )  # Some APIs return new refresh token
+    expires_in = int(token_doc.get("expires_in", 3600))
+
+    oauth_token.access_token_enc = encrypt_secret(access_token)
+    oauth_token.refresh_token_enc = encrypt_secret(new_refresh_token)
+    oauth_token.scope = token_doc.get("scope", oauth_token.scope)
+    oauth_token.expires_at = timezone.now() + timezone.timedelta(seconds=expires_in)
+    oauth_token.save()
+
+    return access_token
 
 
 def _to_py(obj: Any) -> Any:
@@ -154,31 +183,61 @@ def _fetch_all_transactions(
     from_date: Optional[str],
     to_date: Optional[str],
     page_limit: Optional[int] = None,
-) -> list[dict]:
+    oauth_token: Optional[OAuthToken] = None,
+    consent_id: Optional[str] = None,
+) -> tuple[list[dict], str]:
     """
     Robustly fetch *all* transactions, following pagination by 'next_cursor' if present.
-    Returns the concatenated list in the *external* shape (not normalized).
+    Returns the concatenated list in the *external* shape (not normalized)
+    and the potentially refreshed access token.
+
+    If a 401 error occurs and oauth_token is provided, attempts to refresh the token once.
     """
     all_txs: list[dict] = []
     after: Optional[str] = None
+    current_token = access_token
 
     while True:
-        page = client.list_transactions_all(
-            access_token=access_token,
-            from_date=from_date,
-            to_date=to_date,
-            limit=page_limit,
-            after=after,
-        )
-        txs = _tx_list_from_payload(page)
-        all_txs.extend(txs)
+        try:
+            page = client.list_transactions_all(
+                access_token=current_token,
+                from_date=from_date,
+                to_date=to_date,
+                limit=page_limit,
+                after=after,
+            )
+            txs = _tx_list_from_payload(page)
+            all_txs.extend(txs)
 
-        nxt = _next_cursor_from_payload(page)
-        if not nxt:
-            break
-        after = nxt  # follow cursor
+            nxt = _next_cursor_from_payload(page)
+            if not nxt:
+                break
+            after = nxt  # follow cursor
+        except RuntimeError as e:
+            # Check if it's a 401 error
+            if "401" in str(e) and oauth_token is not None:
+                # Try to refresh the token once
+                current_token = _refresh_oauth_token(oauth_token, client, consent_id)
+                # Retry the request with the new token
+                page = client.list_transactions_all(
+                    access_token=current_token,
+                    from_date=from_date,
+                    to_date=to_date,
+                    limit=page_limit,
+                    after=after,
+                )
+                txs = _tx_list_from_payload(page)
+                all_txs.extend(txs)
 
-    return all_txs
+                nxt = _next_cursor_from_payload(page)
+                if not nxt:
+                    break
+                after = nxt
+            else:
+                # Re-raise if not a 401 or no oauth_token provided
+                raise
+
+    return all_txs, current_token
 
 
 # ---------------------------
@@ -214,12 +273,15 @@ def start_scoring_pipeline(user_id: int):
         client = AISClient()
 
         # 2) Fetch ALL transactions (with pagination if provided by API)
-        ext_txs = _fetch_all_transactions(
+        # Passing oauth_token enables automatic token refresh on 401 errors
+        ext_txs, refreshed_token = _fetch_all_transactions(
             client=client,
             access_token=access_token,
             from_date="1900-01-01",
             to_date="2100-12-31",
             page_limit=None,  # or set e.g. 500 if backend enforces a maximum
+            oauth_token=oauth_token,
+            consent_id=None,  # Add consent_id if needed
         )
 
         # 3) Normalize + persist
@@ -285,10 +347,24 @@ def start_scoring_pipeline(user_id: int):
         score_table = scorecard.table()
         factors = score_table.groupby("Variable")["Points"].sum().to_dict()
 
-        risk_tier = RiskTier.objects.filter(
-            min_score__lte=score, max_score__gte=score
-        ).first()
-        risk_category = risk_tier.name if risk_tier else "High Risk"
+        # Determine risk tier based on score
+        # Order by 'order' field to handle overlaps properly (lower order = higher priority)
+        risk_tier = (
+            RiskTier.objects.filter(min_score__lte=score, max_score__gte=score)
+            .order_by("order")
+            .first()
+        )
+
+        # Fallback: if score doesn't match any tier, assign based on score value
+        if not risk_tier:
+            if score < 25:
+                risk_category = "High Risk"
+            elif score < 75:
+                risk_category = "Good"  # Catches 50-75 gap
+            else:
+                risk_category = "Excellent"
+        else:
+            risk_category = risk_tier.name
 
         trust_score_snapshot = TrustScoreSnapshot.objects.create(
             user=user, trust_score=score, factors=factors, risk_category=risk_category
@@ -302,7 +378,7 @@ def start_scoring_pipeline(user_id: int):
 
         if not token_balance or token_balance.balance == 0:
             token_tier = "New" if not has_active_loan else "High Risk"
-        elif token_balance.balance <= 100:
+        elif token_balance.balance <= 500:
             token_tier = "Good"
         else:
             token_tier = "Excellent"

@@ -15,6 +15,7 @@ from backend.apps.scoring.models import TrustScoreSnapshot
 
 API_URL = "http://web:8000/api/v1/score/profile"
 
+
 def _score_label(score: int) -> str:
     if score >= 80:
         return "👍 Excellent"
@@ -85,9 +86,15 @@ def _fetch_score_profile(user: TelegramUser) -> Optional[Dict[str, Any]]:
     return {
         "trust_score": float(snapshot.trust_score),
         "risk_category": snapshot.risk_category,
-        "token_balance": getattr(user, "token_balance", 0),  # adjust if you store tokens elsewhere
-        "max_loan_ftc": getattr(user, "max_loan_ftc", 0),   # adjust if calculated elsewhere
-        "max_loan_zar": getattr(user, "max_loan_zar", 0),   # adjust if calculated elsewhere
+        "token_balance": getattr(
+            user, "token_balance", 0
+        ),  # adjust if you store tokens elsewhere
+        "max_loan_ftc": getattr(
+            user, "max_loan_ftc", 0
+        ),  # adjust if calculated elsewhere
+        "max_loan_zar": getattr(
+            user, "max_loan_zar", 0
+        ),  # adjust if calculated elsewhere
         "score_factors": getattr(snapshot, "factors", {}) or {},  # factors JSONField
     }
 
@@ -118,7 +125,7 @@ class ScoreCommand(BaseCommand):
                 "Tips to improve your TrustScore:\n"
                 "• Pay on time\n"
                 "• Increase CTT tokens\n"
-                "• Maintain account verification"
+                "• Maintain account verification",
             )
             return
 
@@ -126,7 +133,7 @@ class ScoreCommand(BaseCommand):
             reply(
                 msg,
                 "CTT tokens come from responsible repayment behavior.\n"
-                "More tokens help grow your reputation and increase loan limits."
+                "More tokens help grow your reputation and increase loan limits.",
             )
             return
 
@@ -147,4 +154,3 @@ class ScoreCommand(BaseCommand):
             kb_score_actions(),
             parse_mode="HTML",
         )
-

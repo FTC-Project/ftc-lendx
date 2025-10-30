@@ -11,7 +11,7 @@ class ConsentAdmin(admin.ModelAdmin):
 
 @admin.register(OAuthToken)
 class OAuthTokenAdmin(admin.ModelAdmin):
-    list_display = ("user", "provider", "expires_at", "updated_at")
+    list_display = ("user", "provider", "expires_at", "updated_at", "access_token_enc", "refresh_token_enc")
     list_filter = ("provider",)
     search_fields = ("user__username",)
 

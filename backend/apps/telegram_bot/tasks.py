@@ -6,7 +6,17 @@ from celery import shared_task
 from dotenv import load_dotenv
 from typing import Optional
 
+from backend.apps.scoring.tasks import start_scoring_pipeline
 from backend.apps.telegram_bot.fsm_store import FSMStore
+from backend.apps.tokens.services.credittrust_sync import CreditTrustSyncService
+from backend.apps.tokens.services.ftc_token import FTCTokenService
+from backend.apps.tokens.services.loan_system import LoanSystemService
+from backend.apps.users.models import TelegramUser
+from backend.apps.loans.models import Loan, Repayment, RepaymentSchedule
+from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @shared_task(queue="telegram_bot")
@@ -227,9 +237,9 @@ def _get_permission_error_message(permission_level: str) -> str:
         permission_level, "⛔ You don't have permission to use this command."
     )
 
-
-@shared_task(queue="telegram_bot", bind=True, max_retries=3, default_retry_delay=60)
-def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
+# 2 Minute max
+@shared_task(queue="scoring", task_time_limit=120)
+def process_loan_onchain(loan_id: str) -> None:
     """
     Process loan creation on-chain asynchronously with retry logic.
 
@@ -256,7 +266,11 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
 
         # Get the loan
         loan = Loan.objects.get(id=loan_id)
+        if not loan:
+            logger.error(f"[OnChain] Loan {loan_id} not found")
+            return
         user = loan.user
+        chat_id = user.telegram_id
 
         # Check if user has a wallet
         if not hasattr(user, "wallet") or not user.wallet:
@@ -318,6 +332,8 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
             payload={
                 "loan_id": onchain_loan_id,
                 "amount": loan.amount,
+                "apr_bps": loan.apr_bps,
+                "term_days": loan.term_days,
                 "tx_hash": fund_result["tx_hash"],
             },
         )
@@ -335,6 +351,8 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
             payload={
                 "loan_id": onchain_loan_id,
                 "amount": loan.amount,
+                "apr_bps": loan.apr_bps,
+                "term_days": loan.term_days,
                 "tx_hash": disburse_result["tx_hash"],
             },
         )
@@ -378,15 +396,6 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
 
     except Exception as e:
         logger.error(f"[OnChain] Error processing loan {loan_id}: {e}", exc_info=True)
-
-        # Retry the task if we haven't exceeded max_retries
-        if self.request.retries < self.max_retries:
-            logger.info(
-                f"[OnChain] Retrying loan {loan_id} (attempt {self.request.retries + 1}/{self.max_retries})"
-            )
-            raise self.retry(exc=e)
-
-        # Max retries exceeded - mark loan as failed and notify user
         try:
             loan = Loan.objects.get(id=loan_id)
             loan.state = "declined"
@@ -405,3 +414,100 @@ def process_loan_onchain(self, loan_id: str, chat_id: int) -> None:
         send_telegram_message_task.delay(
             chat_id=chat_id, text=error_msg, parse_mode="HTML"
         )
+
+
+def _fmt_ftc(amount: float) -> str:
+    """Format FTC amount."""
+    return f"{amount:,.8f} FTC" # Increased precision for display
+
+
+@shared_task(queue="scoring", task_time_limit=240)
+def process_repayment_onchain(
+    loan_id,
+    user_id,
+    chat_id,
+    wallet_address,
+    user_private_key,
+    ftc_amount: float, # Explicitly expect float
+    is_on_time,
+):
+    from backend.apps.telegram_bot.tasks import send_telegram_message_task
+    try:
+        loan = Loan.objects.get(id=loan_id)
+        user = TelegramUser.objects.get(id=user_id)
+        ftc_service = FTCTokenService()
+        loan_service = LoanSystemService()
+        
+        # Ensure ftc_amount is a float
+        ftc_amount_float = float(ftc_amount)
+
+        # Step 1: Approve LoanSystem to spend FTC
+        # ftc_amount_float passed to the approve service
+        approve_result = ftc_service.approve(
+            owner_address=wallet_address,
+            spender_address=settings.LOANSYSTEM_ADDRESS,
+            amount=ftc_amount_float + 0.1,
+            private_key=user_private_key,
+        )
+        logger.info(f"[RepayTask] Approved: {approve_result['tx_hash']}")
+
+        # Step 2: Repay on chain
+        # ftc_amount_float passed to the repay service
+        repay_result = loan_service.mark_repaid_ftct(
+            loan_id=loan.onchain_loan_id,
+            on_time=is_on_time,
+            amount=ftc_amount_float + 0.1,
+            borrower_address=wallet_address,
+            borrower_private_key=user_private_key,
+        )
+        logger.info(f"[RepayTask] Repaid on-chain: {repay_result['tx_hash']}")
+
+        # Get schedule object, ensuring amounts are treated as float for comparison
+        schedule = RepaymentSchedule.objects.filter(loan=loan, installment_no=1).first()
+        
+        # Update loan schedule
+        schedule.amount_paid = float(schedule.amount_paid) + ftc_amount_float
+        schedule.status = "paid" if schedule.amount_paid >= float(schedule.amount_due) else "partial"
+        schedule.save(update_fields=["amount_paid", "status"])
+        
+        # Update Repayment object
+        Repayment.objects.create(
+            loan=loan,
+            amount=ftc_amount_float, # Use float amount
+            schedule=schedule,
+            tx_hash=repay_result["tx_hash"],
+        )
+        
+        # Update loan itself to be paid - using the precise float amount
+        loan.state = "repaid"
+        loan.repaid_amount = ftc_amount_float
+        
+        # The true ZAR interest portion is the total repaid amount minus the principal
+        loan.interest_portion = ftc_amount_float - float(loan.amount)
+        loan.save(update_fields=["state", "repaid_amount", "interest_portion"])
+        
+        # Now execute the sync credit trust balance task
+        credit_trust_sync = CreditTrustSyncService()
+        credit_trust_sync.sync_user_balance(user)
+        
+        # Now execute the score update task
+        start_scoring_pipeline.delay(user_id=user.id)
+
+        msg = (
+            "✅ <b>Repayment Complete</b>\n\n"
+            f"Loan: <code>{str(loan.id)[:8]}...</code>\n"
+            f"FTC Amount: {_fmt_ftc(ftc_amount_float)}\n\n" # Display as precise float
+            f"1️⃣ Approve: <code>{approve_result['tx_hash'][:16]}...</code>\n"
+            f"2️⃣ Repay: <code>{repay_result['tx_hash'][:16]}...</code>\n"
+            "\n<i>Thank you for your repayment! Use /status to check your loan record.</i>"
+        )
+        send_telegram_message_task.delay(chat_id=chat_id, text=msg, parse_mode="HTML")
+    except Exception as e:
+        logger.error(f"[RepayTask] Error during on-chain repayment of loan {loan_id}: {e}", exc_info=True)
+        err_msg = (
+            "❌ <b>Repayment Failed</b>\n\n"
+            f"Loan: <code>{str(loan_id)[:8]}...</code>\n\n"
+            f"Error: {str(e)}\n\n"
+            "Please try again or contact support if the issue persists."
+        )
+        send_telegram_message_task.delay(chat_id=chat_id, text=err_msg, parse_mode="HTML")

@@ -23,7 +23,7 @@ from backend.apps.telegram_bot.flow import (
 )
 from backend.apps.telegram_bot.keyboards import kb_back_cancel, kb_confirm
 
-from backend.apps.users.models import TelegramUser
+from backend.apps.users.models import Notification, TelegramUser
 from backend.apps.scoring.models import AffordabilitySnapshot
 from backend.apps.loans.models import Loan, LoanOffer, RepaymentSchedule
 from backend.apps.telegram_bot.tasks import process_loan_onchain
@@ -118,7 +118,7 @@ def render_repayment_schedule(data: dict) -> str:
 def calculate_loan_details(amount: int, term_days: int, apr: float) -> dict:
     # Using simple interest for this POC.
     interest = (amount) * (apr / 100) * (term_days / 365)
-    total_repayable = int(round(amount + interest))
+    total_repayable = (round(amount + interest,2))
     due_date = timezone.now().date() + datetime.timedelta(days=term_days)
 
     # For this POC, we assume a single repayment at the end of the term.
@@ -280,6 +280,7 @@ class ApplyCommand(BaseCommand):
                         user=user,
                         amount=data["amount"],
                         term_days=data["term_days"],
+                        interest_portion=data["interest"],
                         apr_bps=int(data["apr"] * 100),
                         state="declined",
                     )
@@ -331,55 +332,35 @@ class ApplyCommand(BaseCommand):
                         data=data,
                         parse_mode="HTML",
                     )
-
-                    # Create loan and related records in a transaction to prevent signal from firing
-                    with transaction.atomic():
-                        # Temporarily disconnect signal to prevent automatic on-chain processing
-                        from django.db.models.signals import post_save
-                        from backend.apps.loans.signals import create_loan_on_chain
-
-                        post_save.disconnect(create_loan_on_chain, sender=Loan)
-
-                        try:
-                            loan = Loan.objects.create(
-                                user=user,
-                                amount=data["amount"],
-                                term_days=data["term_days"],
-                                apr_bps=int(data["apr"] * 100),
-                                state="created",
-                                due_date=datetime.datetime.strptime(
-                                    data["due_date"], "%Y-%m-%d"
-                                ).date(),
-                                interest_portion=data["interest"],
-                            )
-
-                            LoanOffer.objects.create(
-                                loan=loan,
-                                monthly_payment=data[
-                                    "total_repayable"
-                                ],  # Simplified for single payment
-                                total_repayable=data["total_repayable"],
-                                breakdown={"schedule": data["schedule"]},
-                            )
-
-                            for item in data["schedule"]:
-                                RepaymentSchedule.objects.create(
-                                    loan=loan,
-                                    installment_no=item["installment_no"],
-                                    due_at=datetime.datetime.strptime(
-                                        item["due_at"], "%Y-%m-%d"
-                                    ),
-                                    amount_due=item["amount_due"],
-                                )
-                        finally:
-                            # Reconnect signal
-                            post_save.connect(create_loan_on_chain, sender=Loan)
+                    loan = Loan.objects.create(
+                        user=user,
+                        amount=data["amount"],
+                        term_days=data["term_days"],
+                        interest_portion=data["interest"],
+                        apr_bps=int(data["apr"] * 100),
+                        state="created",
+                    )
+                    LoanOffer.objects.create(
+                        loan=loan,
+                        monthly_payment=data["total_repayable"],
+                        total_repayable=data["total_repayable"],
+                        breakdown={"schedule": data["schedule"]},
+                    )
+                    # Make a repayment schedule object
+                    for item in data["schedule"]:
+                        RepaymentSchedule.objects.create(
+                            loan=loan,
+                            installment_no=item["installment_no"],
+                            due_at=timezone.datetime.strptime(item["due_at"], "%Y-%m-%d"),
+                            amount_due=item["amount_due"],
+                            status="pending",
+                        )
 
                     # Process on-chain asynchronously
                     logger.info(
                         f"[Apply] Triggering async on-chain processing for loan {loan.id}"
                     )
-                    process_loan_onchain.delay(str(loan.id), msg.chat_id)
+                    process_loan_onchain.delay(str(loan.id))
 
                 except Exception as e:
                     logger.error(f"[Apply] Error creating loan: {e}", exc_info=True)

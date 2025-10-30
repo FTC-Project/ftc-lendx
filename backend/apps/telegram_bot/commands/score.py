@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional
 from celery import shared_task
 import requests
 
+from backend.apps.loans.models import Loan
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.commands.register import register
 from backend.apps.telegram_bot.messages import TelegramMessage
@@ -11,146 +12,220 @@ from backend.apps.telegram_bot.flow import reply
 from backend.apps.telegram_bot.keyboards import kb_back_cancel
 from backend.apps.users.models import TelegramUser
 from typing import Dict, Any, Optional
-from backend.apps.scoring.models import TrustScoreSnapshot
+from backend.apps.scoring.models import AffordabilitySnapshot
+from backend.apps.tokens.models import CreditTrustBalance
+from backend.apps.tokens.services.tier_calculation import TokenTierCalculator
+from backend.apps.telegram_bot.fsm_store import FSMStore
+from backend.apps.telegram_bot.flow import start_flow, set_step, clear_flow, mark_prev_keyboard, prev_step_of
 
-API_URL = "http://web:8000/api/v1/score/profile"
+# -------- Flow config --------
+CMD = "score"
+S_MENU = "score_menu"
+S_DETAILS = "score_details"
+S_TIPS = "score_tips"
 
+PREV = {
+    S_MENU: None,
+    S_DETAILS: S_MENU,
+    S_TIPS: S_MENU,
+}
 
-def _score_label(score: int) -> str:
-    if score >= 80:
-        return "👍 Excellent"
-    if score >= 60:
-        return "🙂 Fair"
-    if score >= 40:
-        return "⚠️ Poor"
-    return "❌ Very Poor"
-
-
-def _token_reputation(balance: float) -> str:
-    if balance >= 10:
-        return "🌟 Great Reputation"
-    if balance >= 5:
-        return "✅ Good Reputation"
-    if balance >= 1:
-        return "🆗 Average"
-    return "⚠️ Needs Improvement"
-
-
-def _format_profile(data: Dict[str, Any]) -> str:
-    score = data.get("trust_score", 0)
-    score_txt = f"{score}/100 ({_score_label(score)})"
-
-    token_balance = float(data.get("token_balance", 0))
-    token_txt = f"{token_balance:.2f} CTT ({_token_reputation(token_balance)})"
-
-    eligibility_ftc = data.get("max_loan_ftc", 0)
-    eligibility_zar = data.get("max_loan_zar", 0)
-
-    factors = data.get("score_factors", {})
-    strengths = factors.get("strengths", [])
-    weaknesses = factors.get("weaknesses", [])
-
-    fx_txt = ""
-    if strengths:
-        fx_txt += "✅ Strengths:\n"
-        fx_txt += "\n".join([f"• {s}" for s in strengths]) + "\n"
-    if weaknesses:
-        fx_txt += "⚠️ Weaknesses:\n"
-        fx_txt += "\n".join([f"• {w}" for w in weaknesses])
-
-    return (
-        "<b>📊 Credit Score</b>\n\n"
-        f"<b>TrustScore:</b> {score_txt}\n"
-        f"<b>Token Balance:</b> {token_txt}\n\n"
-        f"<b>Loan Eligibility:</b>\n"
-        f"• {eligibility_ftc:,} FTC (≈ R{eligibility_zar:,})\n\n"
-        f"{fx_txt}"
-    )
-
-
-def kb_score_actions() -> dict:
-    rows = [
-        [{"text": "📈 How to Improve", "callback_data": "score:improve"}],
-        [{"text": "🔹 Token Info", "callback_data": "score:tokeninfo"}],
-    ]
-    return kb_back_cancel(rows)
-
-
-def _fetch_score_profile(user: TelegramUser) -> Optional[Dict[str, Any]]:
-    """Fetch the latest TrustScoreSnapshot for a user directly from the database."""
-    snapshot = user.score_snapshots.order_by("-calculated_at").first()
-    if not snapshot:
-        return None
-
-    # Map database fields to expected API structure
+def kb_score_menu() -> dict:
     return {
-        "trust_score": float(snapshot.trust_score),
-        "risk_category": snapshot.risk_category,
-        "token_balance": getattr(
-            user, "token_balance", 0
-        ),  # adjust if you store tokens elsewhere
-        "max_loan_ftc": getattr(
-            user, "max_loan_ftc", 0
-        ),  # adjust if calculated elsewhere
-        "max_loan_zar": getattr(
-            user, "max_loan_zar", 0
-        ),  # adjust if calculated elsewhere
-        "score_factors": getattr(snapshot, "factors", {}) or {},  # factors JSONField
+        "inline_keyboard": [
+            [{"text": "📊 View Score & Tier", "callback_data": "score:view_score"}],
+            [{"text": "📈 How to Increase Score", "callback_data": "score:view_tips"}],
+            [
+                {"text": "🧾 Detailed Breakdown", "callback_data": "score:view_details"},
+            ],
+            [
+                {"text": "⬅️ Back", "callback_data": "flow:cancel"},
+            ],
+        ]
     }
 
+def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
+    # Calculate how much of their limit they have used, basically fetch loans that are disbursed and sum the amounts
+    loans = Loan.objects.filter(user=snap.user, state="disbursed")
+    used_limit = sum(loan.amount for loan in loans)
+    remaining_limit = snap.limit - used_limit if used_limit < snap.limit else 0
+    return (
+        f"<b>📊 Your Unified Score</b>\n\n"
+        f"<b>Score Tier:</b> {snap.score_tier}\n"
+        f"<b>Credit Limit:</b> R{snap.limit:,.2f}\n"
+        f"<b>Loan Used:</b> R{used_limit:,.2f}\n"
+        f"<b>Loan Available:</b> R{remaining_limit:,.2f}\n"
+        f"<b>Unified Score:</b> {snap.combined_score}/100\n"
+        f"<b>Credit Score:</b> {snap.credit_score}/100\n"
+        f"<b>Token Score:</b> {snap.token_score}/100\n"
+        f"<b>APR:</b> {snap.apr:.2f}%\n\n"
+        f"<i>Better scores unlock higher limits and lower APR.</i>"
+    )
+
+def render_score_details(snap: AffordabilitySnapshot) -> str:
+    f = snap.credit_factors
+    strengths = f.get("strengths", [])
+    weaknesses = f.get("weaknesses", [])
+    details = ""
+    if strengths:
+        details += "✅ <b>Strengths:</b>\n" + "\n".join(f"• {s}" for s in strengths) + "\n"
+    if weaknesses:
+        details += "⚠️ <b>Weaknesses:</b>\n" + "\n".join(f"• {w}" for w in weaknesses) + "\n"
+    if not details:
+        details = "<i>No factor breakdown available.</i>"
+    return (
+        f"<b>🧾 Score Breakdown</b>\n\n"
+        f"{details}"
+    )
+
+def render_score_tips() -> str:
+    return (
+        "<b>Tips to Increase Your Score</b>\n\n"
+        "• Repay loans on time and in full\n"
+        "• Grow your CTT token balance\n"
+        "• Avoid late payments\n"
+        "• Maintain an active account\n"
+        "• Keep your bank account linked for up-to-date info"
+    )
 
 @register(
-    name="score",
-    aliases=["/score"],
-    description="View your TrustScore and eligibility",
+    name=CMD,
+    aliases=[f"/{CMD}"],
+    description="View your Unified Score, Tier, and Score Breakdown",
     permission="verified_borrower",
 )
-class ScoreCommand(BaseCommand):
-    name = "score"
-    description = "View your TrustScore"
+class UnifiedScoreCommand(BaseCommand):
+    name = CMD
+    description = "Unified /score command"
     permission = "verified_borrower"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))
 
-    @staticmethod
     @shared_task(queue="telegram_bot")
     def task(message_data: dict) -> None:
         msg = TelegramMessage.from_payload(message_data)
+        fsm = FSMStore()
+        state = fsm.get(msg.chat_id)
 
+        # Start flow or menu
+        if not state:
+            data = {}
+            start_flow(fsm, msg.chat_id, CMD, data, S_MENU)
+            mark_prev_keyboard(data, msg)
+            reply(
+                msg,
+                "<b>💎 Score Dashboard</b>\n\nGet your score, tier, and see detailed breakdowns.",
+                kb_score_menu(),
+                data=data,
+                parse_mode="HTML",
+            )
+            return
+        if state.get("command") != CMD:
+            return
+        step = state.get("step")
+        data = state.get("data", {}) or {}
         cb = getattr(msg, "callback_data", None)
-        if cb == "score:improve":
-            reply(
-                msg,
-                "Tips to improve your TrustScore:\n"
-                "• Pay on time\n"
-                "• Increase CTT tokens\n"
-                "• Maintain account verification",
-            )
+        if cb:
+            if cb == "flow:cancel":
+                clear_flow(fsm, msg.chat_id)
+                mark_prev_keyboard(data, msg)
+                reply(
+                    msg,
+                    "👋 Exiting Score dashboard. Use /score to come back anytime.",
+                    data=data,
+                )
+                return
+            if cb == "flow:back":
+                prev = prev_step_of(PREV, step)
+                if prev is None:
+                    clear_flow(fsm, msg.chat_id)
+                    mark_prev_keyboard(data, msg)
+                    reply(msg, "👋 Exiting Score dashboard.", data=data)
+                    return
+                # Go back to previous step or menu
+                set_step(fsm, msg.chat_id, CMD, prev, data)
+                mark_prev_keyboard(data, msg)
+                if prev == S_MENU:
+                    reply(
+                        msg,
+                        "<b>💎 Score Dashboard</b>\n\nGet your score, tier, and see detailed breakdowns.",
+                        kb_score_menu(),
+                        data=data,
+                        parse_mode="HTML",
+                    )
+                return
+            if step == S_MENU:
+                # View Score
+                if cb == "score:view_score":
+                    user = TelegramUser.objects.filter(telegram_id=msg.user_id).first()
+                    snap = (
+                        AffordabilitySnapshot.objects.filter(user=user)
+                        .order_by("-calculated_at")
+                        .first()
+                    )
+                    if not snap:
+                        reply(
+                            msg,
+                            "<b>No score snapshot available.</b>\n\nTry again after linking your bank and waiting for first score calculation.",
+                            kb_score_menu(),
+                            data=data,
+                            parse_mode="HTML",
+                        )
+                        return
+                    set_step(fsm, msg.chat_id, CMD, S_MENU, data)
+                    mark_prev_keyboard(data, msg)
+                    reply(
+                        msg,
+                        render_score_snapshot(snap),
+                        kb_score_menu(),
+                        data=data,
+                        parse_mode="HTML",
+                    )
+                    return
+                # Score tips
+                if cb == "score:view_tips":
+                    set_step(fsm, msg.chat_id, CMD, S_TIPS, data)
+                    mark_prev_keyboard(data, msg)
+                    reply(
+                        msg,
+                        render_score_tips(),
+                        kb_back_cancel(),
+                        data=data,
+                        parse_mode="HTML",
+                    )
+                    return
+                # Details
+                if cb == "score:view_details":
+                    user = TelegramUser.objects.filter(telegram_id=msg.user_id).first()
+                    snap = (
+                        AffordabilitySnapshot.objects.filter(user=user)
+                        .order_by("-calculated_at")
+                        .first()
+                    )
+                    if not snap:
+                        reply(
+                            msg,
+                            "<b>No score snapshot available.</b>\n\nTry again after linking your bank and waiting for first score calculation.",
+                            kb_score_menu(),
+                            data=data,
+                            parse_mode="HTML",
+                        )
+                        return
+                    set_step(fsm, msg.chat_id, CMD, S_DETAILS, data)
+                    mark_prev_keyboard(data, msg)
+                    reply(
+                        msg,
+                        render_score_details(snap),
+                        kb_back_cancel(),
+                        data=data,
+                        parse_mode="HTML",
+                    )
+                    return
+            # Unknown callback
+            mark_prev_keyboard(data, msg)
+            reply(msg, "Please choose an option from the menu.", kb_score_menu(), data=data)
             return
-
-        if cb == "score:tokeninfo":
-            reply(
-                msg,
-                "CTT tokens come from responsible repayment behavior.\n"
-                "More tokens help grow your reputation and increase loan limits.",
-            )
-            return
-
-        try:
-            user = TelegramUser.objects.get(telegram_id=msg.user_id)
-        except TelegramUser.DoesNotExist:
-            reply(msg, "You must register before viewing your score. Use /register.")
-            return
-
-        profile = _fetch_score_profile(user)
-        if not profile:
-            reply(msg, "Your score is not available yet. Please try again later.")
-            return
-
-        reply(
-            msg,
-            _format_profile(profile),
-            kb_score_actions(),
-            parse_mode="HTML",
-        )
+        # Fallback: reset flow
+        clear_flow(fsm, msg.chat_id)
+        reply(msg, "Session lost. Please use /score to start again.")

@@ -8,3 +8,4 @@ from . import testscore  # noqa: F401
 from . import history  # noqa: F401
 from . import status  # noqa: F401
 from . import apply  # noqa: F401
+from . import score  # noqa: F401

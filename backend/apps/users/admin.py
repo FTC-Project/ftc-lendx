@@ -27,7 +27,7 @@ class TelegramUserAdmin(admin.ModelAdmin):
 
 @admin.register(Wallet)
 class WalletAdmin(admin.ModelAdmin):
-    list_display = ("user", "network", "address", "funded_at", "created_at")
+    list_display = ("user", "network", "address", "created_at")
     search_fields = ("address", "user__username")
     list_filter = ("network",)
 

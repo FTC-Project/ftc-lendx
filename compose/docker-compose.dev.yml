@@ -21,6 +21,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   celery_telegram_worker:
     build:
@@ -34,6 +36,7 @@ services:
       DB_HOST: db
       DB_PORT: "5432"
       MPLCONFIGDIR: /tmp/matplotlib_config
+      # Connect to Hardhat on host machine
     volumes:
       - ../:/app
     depends_on:
@@ -61,6 +64,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
   db:
     image: postgres:16

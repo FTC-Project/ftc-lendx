@@ -118,7 +118,7 @@ def render_repayment_schedule(data: dict) -> str:
 def calculate_loan_details(amount: int, term_days: int, apr: float) -> dict:
     # Using simple interest for this POC.
     interest = (amount) * (apr / 100) * (term_days / 365)
-    total_repayable = (round(amount + interest,2))
+    total_repayable = round(amount + interest, 2)
     due_date = timezone.now().date() + datetime.timedelta(days=term_days)
 
     # For this POC, we assume a single repayment at the end of the term.
@@ -351,7 +351,9 @@ class ApplyCommand(BaseCommand):
                         RepaymentSchedule.objects.create(
                             loan=loan,
                             installment_no=item["installment_no"],
-                            due_at=timezone.datetime.strptime(item["due_at"], "%Y-%m-%d"),
+                            due_at=timezone.datetime.strptime(
+                                item["due_at"], "%Y-%m-%d"
+                            ),
                             amount_due=item["amount_due"],
                             status="pending",
                         )

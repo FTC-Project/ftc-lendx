@@ -6,50 +6,60 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('scoring', '0002_remove_trustscoresnapshot_explanation_and_more'),
+        ("scoring", "0002_remove_trustscoresnapshot_explanation_and_more"),
     ]
 
     operations = [
         migrations.DeleteModel(
-            name='RiskTier',
+            name="RiskTier",
         ),
         migrations.RemoveField(
-            model_name='affordabilitysnapshot',
-            name='trust_score_snapshot',
+            model_name="affordabilitysnapshot",
+            name="trust_score_snapshot",
         ),
         migrations.RemoveField(
-            model_name='affordabilitysnapshot',
-            name='token_tier',
+            model_name="affordabilitysnapshot",
+            name="token_tier",
         ),
         migrations.AddField(
-            model_name='affordabilitysnapshot',
-            name='combined_score',
+            model_name="affordabilitysnapshot",
+            name="combined_score",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='affordabilitysnapshot',
-            name='credit_factors',
+            model_name="affordabilitysnapshot",
+            name="credit_factors",
             field=models.JSONField(blank=True, default=dict),
         ),
         migrations.AddField(
-            model_name='affordabilitysnapshot',
-            name='credit_score',
+            model_name="affordabilitysnapshot",
+            name="credit_score",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
             preserve_default=False,
         ),
         migrations.AddField(
-            model_name='affordabilitysnapshot',
-            name='score_tier',
-            field=models.CharField(choices=[('PLATINUM', 'Platinum'), ('GOLD', 'Gold'), ('SILVER', 'Silver'), ('BRONZE', 'Bronze')], db_index=True, default='BRONZE', max_length=10),
+            model_name="affordabilitysnapshot",
+            name="score_tier",
+            field=models.CharField(
+                choices=[
+                    ("PLATINUM", "Platinum"),
+                    ("GOLD", "Gold"),
+                    ("SILVER", "Silver"),
+                    ("BRONZE", "Bronze"),
+                ],
+                db_index=True,
+                default="BRONZE",
+                max_length=10,
+            ),
         ),
         migrations.AddField(
-            model_name='affordabilitysnapshot',
-            name='token_score',
+            model_name="affordabilitysnapshot",
+            name="token_score",
             field=models.DecimalField(decimal_places=2, default=0, max_digits=5),
             preserve_default=False,
         ),
         migrations.DeleteModel(
-            name='TrustScoreSnapshot',
+            name="TrustScoreSnapshot",
         ),
     ]

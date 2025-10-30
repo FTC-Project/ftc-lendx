@@ -237,6 +237,7 @@ def _get_permission_error_message(permission_level: str) -> str:
         permission_level, "⛔ You don't have permission to use this command."
     )
 
+
 # 2 Minute max
 @shared_task(queue="scoring", task_time_limit=120)
 def process_loan_onchain(loan_id: str) -> None:
@@ -418,7 +419,7 @@ def process_loan_onchain(loan_id: str) -> None:
 
 def _fmt_ftc(amount: float) -> str:
     """Format FTC amount."""
-    return f"{amount:,.8f} FTC" # Increased precision for display
+    return f"{amount:,.8f} FTC"  # Increased precision for display
 
 
 @shared_task(queue="scoring", task_time_limit=240)
@@ -428,16 +429,17 @@ def process_repayment_onchain(
     chat_id,
     wallet_address,
     user_private_key,
-    ftc_amount: float, # Explicitly expect float
+    ftc_amount: float,  # Explicitly expect float
     is_on_time,
 ):
     from backend.apps.telegram_bot.tasks import send_telegram_message_task
+
     try:
         loan = Loan.objects.get(id=loan_id)
         user = TelegramUser.objects.get(id=user_id)
         ftc_service = FTCTokenService()
         loan_service = LoanSystemService()
-        
+
         # Ensure ftc_amount is a float
         ftc_amount_float = float(ftc_amount)
 
@@ -464,50 +466,57 @@ def process_repayment_onchain(
 
         # Get schedule object, ensuring amounts are treated as float for comparison
         schedule = RepaymentSchedule.objects.filter(loan=loan, installment_no=1).first()
-        
+
         # Update loan schedule
         schedule.amount_paid = float(schedule.amount_paid) + ftc_amount_float
-        schedule.status = "paid" if schedule.amount_paid >= float(schedule.amount_due) else "partial"
+        schedule.status = (
+            "paid" if schedule.amount_paid >= float(schedule.amount_due) else "partial"
+        )
         schedule.save(update_fields=["amount_paid", "status"])
-        
+
         # Update Repayment object
         Repayment.objects.create(
             loan=loan,
-            amount=ftc_amount_float, # Use float amount
+            amount=ftc_amount_float,  # Use float amount
             schedule=schedule,
             tx_hash=repay_result["tx_hash"],
         )
-        
+
         # Update loan itself to be paid - using the precise float amount
         loan.state = "repaid"
         loan.repaid_amount = ftc_amount_float
-        
+
         # The true ZAR interest portion is the total repaid amount minus the principal
         loan.interest_portion = ftc_amount_float - float(loan.amount)
         loan.save(update_fields=["state", "repaid_amount", "interest_portion"])
-        
+
         # Now execute the sync credit trust balance task
         credit_trust_sync = CreditTrustSyncService()
         credit_trust_sync.sync_user_balance(user)
-        
+
         # Now execute the score update task
         start_scoring_pipeline.delay(user_id=user.id)
 
         msg = (
             "✅ <b>Repayment Complete</b>\n\n"
             f"Loan: <code>{str(loan.id)[:8]}...</code>\n"
-            f"FTC Amount: {_fmt_ftc(ftc_amount_float)}\n\n" # Display as precise float
+            f"FTC Amount: {_fmt_ftc(ftc_amount_float)}\n\n"  # Display as precise float
             f"1️⃣ Approve: <code>{approve_result['tx_hash'][:16]}...</code>\n"
             f"2️⃣ Repay: <code>{repay_result['tx_hash'][:16]}...</code>\n"
             "\n<i>Thank you for your repayment! Use /status to check your loan record.</i>"
         )
         send_telegram_message_task.delay(chat_id=chat_id, text=msg, parse_mode="HTML")
     except Exception as e:
-        logger.error(f"[RepayTask] Error during on-chain repayment of loan {loan_id}: {e}", exc_info=True)
+        logger.error(
+            f"[RepayTask] Error during on-chain repayment of loan {loan_id}: {e}",
+            exc_info=True,
+        )
         err_msg = (
             "❌ <b>Repayment Failed</b>\n\n"
             f"Loan: <code>{str(loan_id)[:8]}...</code>\n\n"
             f"Error: {str(e)}\n\n"
             "Please try again or contact support if the issue persists."
         )
-        send_telegram_message_task.delay(chat_id=chat_id, text=err_msg, parse_mode="HTML")
+        send_telegram_message_task.delay(
+            chat_id=chat_id, text=err_msg, parse_mode="HTML"
+        )

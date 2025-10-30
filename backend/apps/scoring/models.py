@@ -6,6 +6,7 @@ from backend.apps.users.models import TelegramUser
 
 class AffordabilitySnapshot(models.Model):
     """Limit, APR, Score Tier, Credit Score, Credit Factors, Combined Score"""
+
     SCORE_TIERS = [
         ("PLATINUM", "Platinum"),
         ("GOLD", "Gold"),
@@ -22,7 +23,7 @@ class AffordabilitySnapshot(models.Model):
         max_length=10,
         choices=SCORE_TIERS,
         db_index=True,
-        default="BRONZE", 
+        default="BRONZE",
     )
     credit_score = models.DecimalField(max_digits=5, decimal_places=2)  # 0–100
     credit_factors = models.JSONField(default=dict, blank=True)  # pillar breakdown

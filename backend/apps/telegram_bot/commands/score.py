@@ -16,7 +16,13 @@ from backend.apps.scoring.models import AffordabilitySnapshot
 from backend.apps.tokens.models import CreditTrustBalance
 from backend.apps.tokens.services.tier_calculation import TokenTierCalculator
 from backend.apps.telegram_bot.fsm_store import FSMStore
-from backend.apps.telegram_bot.flow import start_flow, set_step, clear_flow, mark_prev_keyboard, prev_step_of
+from backend.apps.telegram_bot.flow import (
+    start_flow,
+    set_step,
+    clear_flow,
+    mark_prev_keyboard,
+    prev_step_of,
+)
 
 # -------- Flow config --------
 CMD = "score"
@@ -30,19 +36,24 @@ PREV = {
     S_TIPS: S_MENU,
 }
 
+
 def kb_score_menu() -> dict:
     return {
         "inline_keyboard": [
             [{"text": "📊 View Score & Tier", "callback_data": "score:view_score"}],
             [{"text": "📈 How to Increase Score", "callback_data": "score:view_tips"}],
             [
-                {"text": "🧾 Detailed Breakdown", "callback_data": "score:view_details"},
+                {
+                    "text": "🧾 Detailed Breakdown",
+                    "callback_data": "score:view_details",
+                },
             ],
             [
                 {"text": "⬅️ Back", "callback_data": "flow:cancel"},
             ],
         ]
     }
+
 
 def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
     # Calculate how much of their limit they have used, basically fetch loans that are disbursed and sum the amounts
@@ -62,21 +73,24 @@ def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
         f"<i>Better scores unlock higher limits and lower APR.</i>"
     )
 
+
 def render_score_details(snap: AffordabilitySnapshot) -> str:
     f = snap.credit_factors
     strengths = f.get("strengths", [])
     weaknesses = f.get("weaknesses", [])
     details = ""
     if strengths:
-        details += "✅ <b>Strengths:</b>\n" + "\n".join(f"• {s}" for s in strengths) + "\n"
+        details += (
+            "✅ <b>Strengths:</b>\n" + "\n".join(f"• {s}" for s in strengths) + "\n"
+        )
     if weaknesses:
-        details += "⚠️ <b>Weaknesses:</b>\n" + "\n".join(f"• {w}" for w in weaknesses) + "\n"
+        details += (
+            "⚠️ <b>Weaknesses:</b>\n" + "\n".join(f"• {w}" for w in weaknesses) + "\n"
+        )
     if not details:
         details = "<i>No factor breakdown available.</i>"
-    return (
-        f"<b>🧾 Score Breakdown</b>\n\n"
-        f"{details}"
-    )
+    return f"<b>🧾 Score Breakdown</b>\n\n" f"{details}"
+
 
 def render_score_tips() -> str:
     return (
@@ -87,6 +101,7 @@ def render_score_tips() -> str:
         "• Maintain an active account\n"
         "• Keep your bank account linked for up-to-date info"
     )
+
 
 @register(
     name=CMD,
@@ -224,7 +239,12 @@ class UnifiedScoreCommand(BaseCommand):
                     return
             # Unknown callback
             mark_prev_keyboard(data, msg)
-            reply(msg, "Please choose an option from the menu.", kb_score_menu(), data=data)
+            reply(
+                msg,
+                "Please choose an option from the menu.",
+                kb_score_menu(),
+                data=data,
+            )
             return
         # Fallback: reset flow
         clear_flow(fsm, msg.chat_id)

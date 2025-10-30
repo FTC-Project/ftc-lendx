@@ -53,7 +53,7 @@ def _fmt_money(amount: float) -> str:
 
 def _fmt_ftc(amount: float) -> str:
     """Format FTC amount."""
-    return f"{amount:,.8f} FTC" # Increased precision for display
+    return f"{amount:,.8f} FTC"  # Increased precision for display
 
 
 def _fmt_date(d) -> str:
@@ -237,14 +237,18 @@ class RepayCommand(BaseCommand):
                     )
                     total_due = float(loan.amount) + float(onchain_interest)
                     remaining = total_due - float(loan.repaid_amount)
-                    
+
                     # Again get the schedule object for the due date of the first (and only) installment
-                    schedule = RepaymentSchedule.objects.filter(loan=loan, installment_no=1).first()
-                    is_on_time = (
-                        timezone.now() <= schedule.due_at if schedule else True
+                    schedule = RepaymentSchedule.objects.filter(
+                        loan=loan, installment_no=1
+                    ).first()
+                    is_on_time = timezone.now() <= schedule.due_at if schedule else True
+                    due_date = (
+                        _fmt_date(schedule.due_at)
+                        if schedule
+                        else _fmt_date(loan.due_date)
                     )
-                    due_date = _fmt_date(schedule.due_at) if schedule else _fmt_date(loan.due_date)
-                    
+
                     # Store in data - all amounts are now consistently float/str
                     data["loan_id"] = str(loan_id)
                     data["loan_amount"] = loan.amount
@@ -260,7 +264,7 @@ class RepayCommand(BaseCommand):
                     set_step(fsm, msg.chat_id, CMD, S_CONFIRM_AMOUNT, data)
 
                     # Show confirmation
-                    
+
                     confirmation_text = (
                         f"💰 <b>Repayment Confirmation</b>\n\n"
                         f"<b>Loan ID:</b> <code>{loan_id[:8]}...</code>\n"
@@ -311,7 +315,7 @@ class RepayCommand(BaseCommand):
                 try:
                     user = TelegramUser.objects.get(telegram_id=msg.user_id)
                     loan = Loan.objects.get(id=data["loan_id"])
-                    
+
                     # Ensure ftc_amount is passed as float
                     if not hasattr(user, "wallet") or not user.wallet:
                         mark_prev_keyboard(data, msg)
@@ -341,15 +345,18 @@ class RepayCommand(BaseCommand):
                         parse_mode="HTML",
                     )
 
-                    from backend.apps.telegram_bot.tasks import process_repayment_onchain
+                    from backend.apps.telegram_bot.tasks import (
+                        process_repayment_onchain,
+                    )
+
                     process_repayment_onchain.delay(
                         loan_id=loan.id,
                         user_id=user.id,
                         chat_id=msg.chat_id,
                         wallet_address=wallet_address,
                         user_private_key=user_private_key,
-                        ftc_amount=data['ftc_amount'], # Passed as float
-                        is_on_time=data['is_on_time'],
+                        ftc_amount=data["ftc_amount"],  # Passed as float
+                        is_on_time=data["is_on_time"],
                     )
                     reply(
                         msg,

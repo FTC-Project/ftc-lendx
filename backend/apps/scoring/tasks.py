@@ -11,7 +11,12 @@ from django.utils.dateparse import parse_datetime
 
 from backend.apps.audit.models import DataAccessLog
 from backend.apps.banking.adapters import AISClient
-from backend.apps.banking.models import BankAccount, BankTransaction, Consent, OAuthToken
+from backend.apps.banking.models import (
+    BankAccount,
+    BankTransaction,
+    Consent,
+    OAuthToken,
+)
 from backend.apps.scoring.credit_scoring import create_feature_vector, import_scorecard
 from backend.apps.scoring.limit import calculate_credit_limit
 from backend.apps.scoring.models import (
@@ -59,20 +64,19 @@ SCORE_TIERS = [
 # Helpers
 # ---------------------------
 
+
 def _get_score_tier(combined_score: float) -> str:
     """
     Determines the tier (e.g., 'PLATINUM', 'GOLD') based on the combined score.
-    
+
     :param combined_score: The calculated score (C) from 0 to 100.
     :return: The tier name (str) corresponding to the score.
     """
     for tier_name, lower_bound, upper_bound in SCORE_TIERS:
         if lower_bound <= combined_score <= upper_bound:
             return tier_name
-            
+
     return "BRONZE"
-        
-        
 
 
 def _refresh_oauth_token(
@@ -398,10 +402,10 @@ def start_scoring_pipeline(user_id: int):
 
         # 7) Determine Token Tier
         token_object = CreditTrustBalance.objects.filter(user=user).first()
-        
+
         # Unified Score Calculation
         # This is a normalized token value between 0 and 100.
-        token_norm = min(100,(token_object.balance / TOKEN_MAX) * 100)
+        token_norm = min(100, (token_object.balance / TOKEN_MAX) * 100)
         combined_score = (SCORE_WEIGHT * score) + (TOKEN_WEIGHT * token_norm)
 
         # 8) Affordability & Limit

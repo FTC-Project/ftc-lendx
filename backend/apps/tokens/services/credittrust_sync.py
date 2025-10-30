@@ -54,4 +54,5 @@ class CreditTrustTokenClient:
         )
 
     def get_balance(self, address: str) -> int:
-        return self.contract.functions.tokenBalance(address).call()
+        balance_in_wei = self.contract.functions.tokenBalance(address).call()
+        return balance_in_wei / 10**18

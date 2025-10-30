@@ -60,6 +60,15 @@ class BalanceCommand(BaseCommand):
 
             # Fetch on-chain balances
             try:
+                # Reply first that we are fetching the balances
+                mark_prev_keyboard(data, msg)
+                reply(
+                    msg,
+                    "🔄 <b>Fetching Balances...</b>\n\n"
+                    "Please wait while we fetch your token balances from the blockchain.",
+                    data=data,
+                    parse_mode="HTML",
+                )
                 # Get FTC balance
                 ftc_service = FTCTokenService()
                 ftc_balance = ftc_service.get_balance(wallet_address)
@@ -67,7 +76,7 @@ class BalanceCommand(BaseCommand):
                 # Get CTT balance
                 ctt_client = CreditTrustTokenClient()
                 # Weidly CTT is in units of 10^18, so we need to divide by 10^18 to get the actual balance
-                ctt_balance = ctt_client.get_balance(wallet_address) / 10**18
+                ctt_balance = ctt_client.get_balance(wallet_address)
                 xrp_balance = ftc_service.web3.from_wei(
                     ftc_service.web3.eth.get_balance(wallet_address), "ether"
                 )

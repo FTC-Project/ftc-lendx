@@ -38,17 +38,20 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
         # Now we must use the `kind` to determine the message content
         if instance.kind == "score_updated":
             score = instance.payload.get("score")
-            risk = instance.payload.get("risk", "unknown")
+            tier = instance.payload.get("tier", "unknown")
+            limit = instance.payload.get("limit")
             if score is not None:
                 text = (
-                    f"<b>🎯 Trust Score Updated</b>\n\n"
-                    f"Your trust score has been updated to <b>{score:.2f}</b> "
-                    f"(<i>{risk}</i>)."
+                    f"<b>🎯 Affordability Score Updated</b>\n\n"
+                    f"Your affordability score has been updated to <b>{score:.2f}</b>. \n\n"
+                    f"Your tier is <b>{tier}</b>. \n\n"
+                    f"Your credit limit is <b>R{limit:,.2f}</b>. \n\n"
+                    f"You can view a detailed breakdown of your score by using the /score command."
                 )
             else:
                 text = (
-                    "<b>🎯 Trust Score Updated</b>\n\n"
-                    "Your trust score has been updated, but the new score is unavailable."
+                    "<b>🎯 Affordability Score Updated</b>\n\n"
+                    "Your affordability score has been updated, but the new score is unavailable."
                 )
 
         elif instance.kind == "loan_created_on_chain":

@@ -3,6 +3,8 @@ from typing import Dict, Optional
 
 from celery import shared_task
 
+from backend.apps.pool.models import PoolAccount, PoolDeposit, PoolWithdrawal
+from backend.apps.tokens.services.loan_system import LoanSystemService
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.registry import register
@@ -24,14 +26,14 @@ CMD = "balance"
     name=CMD,
     aliases=[f"/{CMD}"],
     description="Check your FTC and CTT token balances",
-    permission="verified_borrower",
+    permission="verified",
 )
 class BalanceCommand(BaseCommand):
     """Displays on-chain FTC and CTT token balances."""
 
     name = CMD
     description = "Check your FTC and CTT token balances"
-    permission = "verified_borrower"
+    permission = "verified"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))
@@ -81,7 +83,34 @@ class BalanceCommand(BaseCommand):
                     ftc_service.web3.eth.get_balance(wallet_address), "ether"
                 )
                 # Format the response message
-                message_text = (
+                if user.role == "lender":
+                    # Pool metrics
+                    ls = LoanSystemService()
+                    total_pool = ls.get_total_pool()
+                    total_shares = ls.get_total_shares()
+                    user_shares = ls.get_shares_of(wallet_address)
+                    user_value = ls.get_share_value(float(user_shares)) if user_shares > 0 else 0
+                    # PnL: current value - net contributed
+                    deposits_sum = sum(float(d.amount) for d in PoolDeposit.objects.filter(user=user))
+                    withdrawals_sum = sum(float(w.principal_out + w.interest_out) for w in PoolWithdrawal.objects.filter(user=user))
+                    net_contrib = deposits_sum - withdrawals_sum
+                    pnl = float(user_value) - net_contrib
+
+                    message_text = (
+                        f"💰 <b>Your Balances & Pool Position</b>\n\n"
+                        f"<b>Wallet:</b> <code>{wallet_address}</code>\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"💵 <b>FTC:</b> {ftc_balance:,.2f} FTC\n"
+                        f"⛽ <b>XRP (gas):</b> {float(xrp_balance):.4f} XRP\n\n"
+                        f"📊 <b>Pool</b>\n"
+                        f"• Total Pool: {float(total_pool):,.2f} FTCT\n"
+                        f"• Total Shares: {float(total_shares):,.6f}\n"
+                        f"• Your Shares: {float(user_shares):,.6f}\n"
+                        f"• Your Investment (est.): {float(user_value):,.2f} FTCT\n"
+                        f"• Your PnL: {pnl:,.2f} FTCT\n"
+                    )
+                else:
+                    message_text = (
                     f"💰 <b>Your Token Balances</b>\n\n"
                     f"<b>Wallet Address:</b>\n"
                     f"<code>{wallet_address}</code>\n\n"

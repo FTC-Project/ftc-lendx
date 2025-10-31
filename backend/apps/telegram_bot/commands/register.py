@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional, Tuple
 import requests
 from celery import shared_task
 
+from backend.apps.pool.models import PoolAccount
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.fsm_store import FSMStore
 from backend.apps.telegram_bot.messages import TelegramMessage
@@ -366,6 +367,17 @@ class RegisterCommand(BaseCommand):
                 # Done
                 clear_flow(fsm, msg.chat_id)
                 mark_prev_keyboard(data, msg)
+                # if lender, tell them they can now deposit to the pool
+                if role == "lender":
+                    # Make a pool account for the user
+                    PoolAccount.objects.create(user=user)
+                    reply(
+                        msg,
+                        "✅ Registration complete and KYC verified!\n\n"
+                        "You can now /deposit to the pool.",
+                        data=data,
+                    )
+                    return
                 reply(
                     msg,
                     "✅ Registration complete and KYC verified!\n\n"

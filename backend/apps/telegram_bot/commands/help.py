@@ -1,6 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, Optional, List, Dict as DictType
+# NOTE (SANANA): Import statement had some redundancy
+# from typing import Dict, Optional, List, Dict as DictType
+from typing import Dict, Optional, List
 from celery import shared_task
 
 from backend.apps.telegram_bot.commands.base import BaseCommand
@@ -44,11 +46,13 @@ CAT_GENERAL = "general"
 # ---------------------------
 
 
-def _kb(inline_rows: List[List[DictType]]) -> dict:
+# NOTE (SANANA): We had `def _kb(inline_rows: List[List[DictType]]) -> dict:` but changed to DICT
+def _kb(inline_rows: List[List[Dict]]) -> dict:
     return {"inline_keyboard": inline_rows}
 
 
 def kb_help_menu() -> dict:
+    # NOTE (SANANA): The Notion help menu only has 4 categories but it makes more sense to have all these
     rows = [
         [{"text": "💳 Loan Application", "callback_data": f"{CB_CAT}{CAT_LOAN}"}],
         [{"text": "💰 FTCoin & Stablecoin", "callback_data": f"{CB_CAT}{CAT_FTC}"}],
@@ -59,6 +63,8 @@ def kb_help_menu() -> dict:
         [{"text": "❌ Cancel/Close ", "callback_data": "flow:cancel"}],
     ]
     return _kb(rows)
+
+    # NOTE FROM (SANANA): All the above appear to have corresponding functions/responses except Loan which has subcategories which need to be create (done in this fix)
 
 
 def kb_back_to_menu() -> dict:
@@ -78,6 +84,22 @@ def kb_fees() -> dict:
     rows = [
         [{"text": "How to avoid late fees", "callback_data": f"{CB_Q}fees:avoid"}],
         [{"text": "Why interest rates vary", "callback_data": f"{CB_Q}fees:why"}],
+        [{"text": "⬅️ Back to Help Menu", "callback_data": CB_MENU}],
+    ]
+    return _kb(rows)
+
+
+# NOTE FROM (SANANA): So, if the user selects [Loan Application] these are the options that come up
+def kb_loan() -> dict:
+    rows = [
+        [{"text": "How to apply", "callback_data": f"{CB_Q}loan:howtoapply"}],
+        [
+            {
+                "text": "Why my application failed",
+                "callback_data": f"{CB_Q}loan:whyfailed",
+            }
+        ],
+        [{"text": "Document requirements", "callback_data": f"{CB_Q}loan:docs"}],
         [{"text": "⬅️ Back to Help Menu", "callback_data": CB_MENU}],
     ]
     return _kb(rows)
@@ -147,11 +169,21 @@ def render_fees_category() -> str:
     )
 
 
+# NOTE FROM (SANANA): Matching Tech Spec
+# def render_loan_category() -> str:
+#     return (
+#         "💳 *Loan Application*\n\n"
+#         "Apply directly in chat with /apply. We'll guide you through linking your bank data, "
+#         "checking eligibility, and showing a transparent offer before you accept."
+#     )
 def render_loan_category() -> str:
     return (
         "💳 *Loan Application*\n\n"
-        "Apply directly in chat with /apply. We'll guide you through linking your bank data, "
-        "checking eligibility, and showing a transparent offer before you accept."
+        "Here's what I can help with:\n"
+        " • How to apply\n"
+        " • Why my application failed\n"
+        " • Document requirements\n\n"
+        "Select a topic:"
     )
 
 
@@ -202,6 +234,32 @@ def render_answer(cb: str) -> str:
         return (
             "Interest rates vary with risk: your credit score, repayment history, and affordability analysis determine the APR. "
             "Build reputation to unlock lower rates over time."
+        )
+    # NOTE FROM (SANANA): Adding these as responses to the 3 options bot gives when user selects [Loan Application]
+    if cb == f"{CB_Q}loan:howtoapply":
+        return (
+            "📝 *To apply for a loan:*\n\n"
+            "1. Type /apply\n"
+            "2. Provide your ID and selfie\n"
+            "3. Link your ABSA account\n"
+            "4. Wait for credit assessment\n"
+            "5. Accept loan offer if eligible\n\n"
+            "Once accepted, funds will be disbursed within 24 hours."
+        )
+    if cb == f"{CB_Q}loan:whyfailed":
+        return (
+            "Your application may fail if:\n"
+            "• The provided documents are invalid or blurry\n"
+            "• Your credit score or affordability check fails\n"
+            "• Your linked account cannot be verified\n\n"
+            "You can retry after fixing any issues."
+        )
+    if cb == f"{CB_Q}loan:docs":
+        return (
+            "Required documents:\n"
+            "• Valid South African ID\n"
+            "• Clear selfie for verification\n"
+            "• Linked ABSA account for disbursement\n"
         )
     return "I didn't catch that—please pick an option from the menu."
 
@@ -267,7 +325,9 @@ class HelpCommand(BaseCommand):
                 return
             if cat == CAT_LOAN:
                 start_flow(fsm, msg.chat_id, CMD, data, S_CAT_LOAN)
-                reply(msg, render_loan_category(), kb_simple_back(), data=data)
+                # NOTE FROM (SANANA): We update this one to make use of kb_loan() for if user chooses [Loan Application]
+                # reply(msg, render_loan_category(), kb_simple_back(), data=data)
+                reply(msg, render_loan_category(), kb_loan(), data=data)
                 return
             if cat == CAT_REPAY:
                 start_flow(fsm, msg.chat_id, CMD, data, S_CAT_REPAY)
@@ -302,6 +362,15 @@ class HelpCommand(BaseCommand):
                     data=data,
                 )
                 return
+            # NOTE (SANANA): Adding this so just like ftc and fees, the answer AND loan sub-menu both show instead of the generic menu
+            if step == S_CAT_LOAN:
+                reply(
+                    msg,
+                    f"{render_loan_category()}\n\n*Q&A*\n{answer}",
+                    kb_loan(),
+                    data=data,
+                )
+                return
             # For other categories just show the answer with back
             reply(msg, answer, kb_simple_back(), data=data)
             return
@@ -324,8 +393,9 @@ class HelpCommand(BaseCommand):
         if step == S_CAT_FEES:
             reply(msg, render_fees_category(), kb_fees(), data=data)
             return
+        # NOTE FROM (SANANA): should also use kb_loan()
         if step == S_CAT_LOAN:
-            reply(msg, render_loan_category(), kb_simple_back(), data=data)
+            reply(msg, render_loan_category(), kb_loan(), data=data)
             return
         if step == S_CAT_REPAY:
             reply(msg, render_repay_category(), kb_simple_back(), data=data)

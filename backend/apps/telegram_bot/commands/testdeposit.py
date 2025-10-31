@@ -149,7 +149,7 @@ class TestDepositCommand(BaseCommand):
                 logger.info(f"[TestDeposit] Depositing {amount} FTC into pool")
                 deposit_result = loan_service.deposit_ftct(
                     lender_address=wallet_address,
-                    amount=amount - 10,  # TODO: Remove this
+                    amount=amount - 10,
                     lender_private_key=user_private_key,
                 )
                 logger.info(f"[TestDeposit] Deposited: {deposit_result['tx_hash']}")

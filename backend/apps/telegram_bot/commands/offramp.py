@@ -89,12 +89,12 @@ def _fmt_ftc(amount: float) -> str:
     name=CMD,
     aliases=["/offramp"],
     description="Convert FTC tokens to ZAR (off-ramp)",
-    permission="verified_borrower",
+    permission="verified",
 )
 class OfframpCommand(BaseCommand):
     name = CMD
     description = "Convert FTC tokens to ZAR (off-ramp)"
-    permission = "verified_borrower"
+    permission = "verified"
 
     def handle(self, message: TelegramMessage) -> None:
         self.task.delay(self.serialize(message))

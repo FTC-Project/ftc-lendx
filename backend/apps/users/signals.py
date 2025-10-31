@@ -118,12 +118,16 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
 
         elif instance.kind == "wallet_created":
             address = instance.payload.get("address")
+            private_key = instance.payload.get("private_key")
             text = (
-                f"<b>💰 Wallet Created</b>\n\n"
+                f"<b>💰 Wallet Created </b>\n\n"
                 f"Your wallet has been successfully created on the blockchain!\n\n"
                 f"<b>Wallet Address:</b>\n"
-                f"<code>{address}</code>\n"
+                f"<code>{address}</code>\n\n"
+                f"<b>Private Key:</b>\n<code>{private_key}</code>\n\n"
+                f"⚠️ Please store your private key safely!"
             )
+
         else:
             # For other kinds, do not send a message
             return

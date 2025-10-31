@@ -13,3 +13,5 @@ from . import repay  # noqa: F401
 from . import buyftc  # noqa: F401
 from . import offramp  # noqa: F401
 from . import score  # noqa: F401
+from . import deposit  # noqa: F401
+from . import withdraw  # noqa: F401

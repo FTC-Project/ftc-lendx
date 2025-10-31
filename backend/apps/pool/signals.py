@@ -12,15 +12,13 @@ def pool_update_on_deposit(sender, instance: PoolDeposit, created, **kwargs):
     if not created:
         return
 
-    def _apply():
+    # Run inside an atomic transaction so select_for_update is valid
+    with transaction.atomic():
         acc, _ = PoolAccount.objects.select_for_update().get_or_create(
             user=instance.user
         )
         acc.principal += instance.amount
         acc.save(update_fields=["principal", "updated_at"])
-
-    # ensure it runs only after the current transaction commits
-    transaction.on_commit(_apply)
 
 
 @receiver(post_save, sender=PoolWithdrawal, dispatch_uid="pool_update_on_withdrawal")
@@ -31,12 +29,10 @@ def pool_update_on_withdrawal(sender, instance: PoolWithdrawal, created, **kwarg
     if not created:
         return
 
-    def _apply():
+    with transaction.atomic():
         acc, _ = PoolAccount.objects.select_for_update().get_or_create(
             user=instance.user
         )
         acc.principal = max(0, acc.principal - instance.principal_out)
         acc.accrued_interest = max(0, acc.accrued_interest - instance.interest_out)
         acc.save(update_fields=["principal", "accrued_interest", "updated_at"])
-
-    transaction.on_commit(_apply)

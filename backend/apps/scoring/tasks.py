@@ -11,23 +11,72 @@ from django.utils.dateparse import parse_datetime
 
 from backend.apps.audit.models import DataAccessLog
 from backend.apps.banking.adapters import AISClient
-from backend.apps.banking.models import BankAccount, BankTransaction, OAuthToken
-from backend.apps.loans.models import Loan
+from backend.apps.banking.models import (
+    BankAccount,
+    BankTransaction,
+    Consent,
+    OAuthToken,
+)
 from backend.apps.scoring.credit_scoring import create_feature_vector, import_scorecard
 from backend.apps.scoring.limit import calculate_credit_limit
 from backend.apps.scoring.models import (
     AffordabilitySnapshot,
-    RiskTier,
-    TrustScoreSnapshot,
 )
 from backend.apps.tokens.models import CreditTrustBalance
 from backend.apps.users.crypto import decrypt_secret, encrypt_secret
 from backend.apps.users.models import TelegramUser
 
+import logging
+
+logger = logging.getLogger(__name__)
+
+# Max token balance to earn highest score.
+TOKEN_MAX = 100000
+# Weight of the trust score in the combined score.
+SCORE_WEIGHT = 0.6
+# Weight of the token score in the combined score.
+TOKEN_WEIGHT = 0.4
+# Platinum is 90-100 combined score
+# Gold is 75 to 89 combined score
+# Silver is 45 - 74
+# Bronze is 0 - 44
+SCORE_TIERS = [
+    ("PLATINUM", 90, 100),
+    ("GOLD", 75, 89),
+    ("SILVER", 45, 74),
+    ("BRONZE", 0, 44),
+]
+
 
 # ---------------------------
 # Helpers
 # ---------------------------
+
+SCORE_TIERS = [
+    ("PLATINUM", 90, 100),
+    ("GOLD", 75, 89),
+    ("SILVER", 45, 74),
+    ("BRONZE", 0, 44),
+]
+
+
+# ---------------------------
+# Helpers
+# ---------------------------
+
+
+def _get_score_tier(combined_score: float) -> str:
+    """
+    Determines the tier (e.g., 'PLATINUM', 'GOLD') based on the combined score.
+
+    :param combined_score: The calculated score (C) from 0 to 100.
+    :return: The tier name (str) corresponding to the score.
+    """
+    for tier_name, lower_bound, upper_bound in SCORE_TIERS:
+        if lower_bound <= combined_score <= upper_bound:
+            return tier_name
+
+    return "BRONZE"
 
 
 def _refresh_oauth_token(
@@ -88,9 +137,11 @@ def _tx_list_from_payload(payload: Any) -> list[dict]:
         # Some APIs may return an empty page with no "data"
         if data is None:
             return []
+        logger.error(f"Transactions payload 'data' key is not a list: {data}")
         raise ValueError("Transactions payload 'data' key is not a list.")
     if isinstance(payload, list):
         return payload
+    logger.error(f"Transactions payload is neither a dict nor a list: {payload}")
     raise ValueError("Transactions payload is neither a dict nor a list.")
 
 
@@ -214,8 +265,10 @@ def _fetch_all_transactions(
                 break
             after = nxt  # follow cursor
         except RuntimeError as e:
+            logger.error(f"Error fetching transactions: {e}")
             # Check if it's a 401 error
             if "401" in str(e) and oauth_token is not None:
+                logger.info(f"Refreshing OAuth token for user: {oauth_token.user.id}")
                 # Try to refresh the token once
                 current_token = _refresh_oauth_token(oauth_token, client, consent_id)
                 # Retry the request with the new token
@@ -234,6 +287,7 @@ def _fetch_all_transactions(
                     break
                 after = nxt
             else:
+                logger.error(f"No next cursor found: {nxt}")
                 # Re-raise if not a 401 or no oauth_token provided
                 raise
 
@@ -263,14 +317,25 @@ def start_scoring_pipeline(user_id: int):
         ).first()  # Just get one account for now
 
         if not bank_account:
+            logger.error(f"No valid bank account found for user: {user_id}")
             raise ValueError("No valid bank account found for user.")
 
         # 1) OAuth & Client
         oauth_token = OAuthToken.objects.get(user=user)
         if not oauth_token or not oauth_token.access_token_enc:
+            logger.error(f"No valid OAuth token found for user: {user_id}")
             raise ValueError("No valid OAuth token found for user.")
         access_token = decrypt_secret(oauth_token.access_token_enc)
         client = AISClient()
+        # Check if our token is expired
+        if oauth_token.expires_at < timezone.now():
+            logger.info(f"OAuth token expired for user: {user_id}")
+            # Refresh the token
+            # First obtain the consent id from the consent object meta ConsentId
+            consent_id = Consent.objects.filter(user=user).first().meta.get("ConsentId")
+            access_token = _refresh_oauth_token(oauth_token, client, consent_id)
+            oauth_token.access_token_enc = encrypt_secret(access_token)
+            oauth_token.save()
 
         # 2) Fetch ALL transactions (with pagination if provided by API)
         # Passing oauth_token enables automatic token refresh on 401 errors
@@ -309,23 +374,10 @@ def start_scoring_pipeline(user_id: int):
             context={"purpose": "credit_scoring"},
         )
 
-        # Guard: empty datasets shouldn't crash scoring
+        # Guard: empty datasets should stop the pipeline
         if df.empty:
-            # Create a minimal snapshot to record that we attempted scoring but had no data
-            trust_score_snapshot = TrustScoreSnapshot.objects.create(
-                user=user,
-                trust_score=0.0,
-                factors={},
-                risk_category="Insufficient Data",
-            )
-            AffordabilitySnapshot.objects.create(
-                user=user,
-                limit=Decimal("0"),
-                apr=Decimal("0"),
-                token_tier="New",
-                trust_score_snapshot=trust_score_snapshot,
-            )
-            return  # Nothing else to do
+            logger.error(f"No transactions found for user: {user_id}")
+            raise ValueError("No transactions found for user.")
 
         # Ensure we convert any Decimal-fields to float for scoring
         for col in df.select_dtypes(include=["object"]).columns:
@@ -334,6 +386,7 @@ def start_scoring_pipeline(user_id: int):
                     lambda x: float(x) if isinstance(x, Decimal) else x
                 )
             except (ValueError, TypeError):
+                logger.error(f"Error converting column {col} to float: {e}")
                 continue
 
         # 5) Trust Score
@@ -347,52 +400,28 @@ def start_scoring_pipeline(user_id: int):
         score_table = scorecard.table()
         factors = score_table.groupby("Variable")["Points"].sum().to_dict()
 
-        # Determine risk tier based on score
-        # Order by 'order' field to handle overlaps properly (lower order = higher priority)
-        risk_tier = (
-            RiskTier.objects.filter(min_score__lte=score, max_score__gte=score)
-            .order_by("order")
-            .first()
-        )
-
-        # Fallback: if score doesn't match any tier, assign based on score value
-        if not risk_tier:
-            if score < 25:
-                risk_category = "High Risk"
-            elif score < 75:
-                risk_category = "Good"  # Catches 50-75 gap
-            else:
-                risk_category = "Excellent"
-        else:
-            risk_category = risk_tier.name
-
-        trust_score_snapshot = TrustScoreSnapshot.objects.create(
-            user=user, trust_score=score, factors=factors, risk_category=risk_category
-        )
-
         # 7) Determine Token Tier
-        token_balance = CreditTrustBalance.objects.filter(user=user).first()
-        has_active_loan = Loan.objects.filter(
-            user=user, state__in=["funded", "disbursed"]
-        ).exists()
+        token_object = CreditTrustBalance.objects.filter(user=user).first()
 
-        if not token_balance or token_balance.balance == 0:
-            token_tier = "New" if not has_active_loan else "High Risk"
-        elif token_balance.balance <= 500:
-            token_tier = "Good"
-        else:
-            token_tier = "Excellent"
+        # Unified Score Calculation
+        # This is a normalized token value between 0 and 100.
+        token_norm = min(100, (token_object.balance / TOKEN_MAX) * 100)
+        combined_score = (SCORE_WEIGHT * score) + (TOKEN_WEIGHT * token_norm)
 
         # 8) Affordability & Limit
-        limit, apr = calculate_credit_limit(df, score, token_tier)
+        limit, apr = calculate_credit_limit(df, combined_score)
+        score_tier = _get_score_tier(combined_score)
 
         # 9) Persist Affordability Snapshot
         AffordabilitySnapshot.objects.create(
             user=user,
             limit=limit,
             apr=apr,
-            token_tier=token_tier,
-            trust_score_snapshot=trust_score_snapshot,
+            score_tier=score_tier,
+            credit_score=score,
+            credit_factors=factors,
+            token_score=token_norm,
+            combined_score=combined_score,
         )
 
     except Exception as e:

@@ -205,7 +205,7 @@ class BuyFTCCommand(BaseCommand):
                             f"New XRP balance: {new_xrp_balance:.4f} XRP\n\n"
                             f"━━━━━━━━━━━━━━━━━━━━\n\n"
                             f"<b>How much FTC would you like to buy?</b>\n\n"
-                            f"<i>Exchange rate: 1 FTC = 0.01 XRP (for testing)</i>",
+                            f"<i>Exchange rate: 1 FTC = 0.0023 XRP (for testing)</i>",
                             kb_amount_selection(),
                             data=data,
                             parse_mode="HTML",
@@ -237,7 +237,7 @@ class BuyFTCCommand(BaseCommand):
                     f"XRP balance: {xrp_balance:.4f} XRP\n\n"
                     f"━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"<b>How much FTC would you like to buy?</b>\n\n"
-                    f"<i>Exchange rate: 1 FTC = 0.01 XRP (for testing)</i>",
+                    f"<i>Exchange rate: 1 FTC = 0.0023 XRP (for testing)</i>",
                     kb_amount_selection(),
                     data=data,
                     parse_mode="HTML",
@@ -309,7 +309,7 @@ class BuyFTCCommand(BaseCommand):
                 try:
                     amount = float(amount_str)
                     data["ftc_amount"] = amount
-                    xrp_cost = amount * 0.01  # 1 FTC = 0.01 XRP
+                    xrp_cost = amount * 0.0023  # 1 FTC = 0.0023 XRP
                     data["xrp_cost"] = xrp_cost
 
                     # Check if user has enough XRP
@@ -361,13 +361,13 @@ class BuyFTCCommand(BaseCommand):
                 amount = float(text)
 
                 # Validate range
-                if amount < 1 or amount > 300:
+                if amount < 1 or amount > 10000:
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
                         f"❌ <b>Invalid Amount</b>\n\n"
                         f"You entered: {amount}\n\n"
-                        f"Please enter a number between 1 and 300.",
+                        f"Please enter a number between 1 and 10,000 FTC.",
                         {
                             "inline_keyboard": [
                                 [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]
@@ -379,7 +379,7 @@ class BuyFTCCommand(BaseCommand):
                     return
 
                 data["ftc_amount"] = amount
-                xrp_cost = amount * 0.01  # 1 FTC = 0.01 XRP
+                xrp_cost = amount * 0.0023  # 1 FTC = 0.0023 XRP
                 data["xrp_cost"] = xrp_cost
 
                 # Check if user has enough XRP
@@ -425,7 +425,7 @@ class BuyFTCCommand(BaseCommand):
                 reply(
                     msg,
                     "❌ <b>Invalid Input</b>\n\n"
-                    "Please enter a valid number between 1 and 300.",
+                    "Please enter a valid number between 1 and 10,000 FTC.",
                     {
                         "inline_keyboard": [
                             [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]

@@ -24,7 +24,9 @@ def _public_deposit_url() -> str:
     return f"{base.rstrip('/')}/deposit_ftct/"
 
 
-def _format_pool_overview(total_pool: float, user_shares: float, user_value: float) -> str:
+def _format_pool_overview(
+    total_pool: float, user_shares: float, user_value: float
+) -> str:
     return (
         "🏦 <b>Pool Overview</b>\n\n"
         f"<b>Total Pool Balance:</b> {total_pool:,.2f} FTCT\n"
@@ -37,7 +39,9 @@ def _format_pool_overview(total_pool: float, user_shares: float, user_value: flo
     )
 
 
-def _kb_deposit_actions(wallet: str | None = None, private_key: str | None = None) -> dict:
+def _kb_deposit_actions(
+    wallet: str | None = None, private_key: str | None = None
+) -> dict:
     base = _public_deposit_url()
     url = base
     if wallet and private_key and base != "#":
@@ -129,5 +133,3 @@ def fetch_and_show_pool_overview(message_data: dict) -> None:
         reply_markup=kb,
         parse_mode="HTML",
     )
-
-

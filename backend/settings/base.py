@@ -39,7 +39,7 @@ INSTALLED_APPS = [
     "backend.apps.audit.apps.AuditConfig",
     "backend.apps.telegram_bot.apps.TelegramBotConfig",
     "backend.apps.botutils.apps.BotutilsConfig",
-    "backend.apps.sys_frontend.apps.SysFrontendConfig", # frontend lender page
+    "backend.apps.sys_frontend.apps.SysFrontendConfig",  # frontend lender page
     "whitenoise.runserver_nostatic",
 ]
 

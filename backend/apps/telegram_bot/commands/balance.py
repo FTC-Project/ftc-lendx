@@ -89,10 +89,17 @@ class BalanceCommand(BaseCommand):
                     total_pool = ls.get_total_pool()
                     total_shares = ls.get_total_shares()
                     user_shares = ls.get_shares_of(wallet_address)
-                    user_value = ls.get_share_value(float(user_shares)) if user_shares > 0 else 0
+                    user_value = (
+                        ls.get_share_value(float(user_shares)) if user_shares > 0 else 0
+                    )
                     # PnL: current value - net contributed
-                    deposits_sum = sum(float(d.amount) for d in PoolDeposit.objects.filter(user=user))
-                    withdrawals_sum = sum(float(w.principal_out + w.interest_out) for w in PoolWithdrawal.objects.filter(user=user))
+                    deposits_sum = sum(
+                        float(d.amount) for d in PoolDeposit.objects.filter(user=user)
+                    )
+                    withdrawals_sum = sum(
+                        float(w.principal_out + w.interest_out)
+                        for w in PoolWithdrawal.objects.filter(user=user)
+                    )
                     net_contrib = deposits_sum - withdrawals_sum
                     pnl = float(user_value) - net_contrib
 
@@ -111,19 +118,19 @@ class BalanceCommand(BaseCommand):
                     )
                 else:
                     message_text = (
-                    f"💰 <b>Your Token Balances</b>\n\n"
-                    f"<b>Wallet Address:</b>\n"
-                    f"<code>{wallet_address}</code>\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"💵 <b>FTC Balance:</b> {ftc_balance:,.2f} FTC\n"
-                    f"<i>FTCoin - Your main currency</i>\n\n"
-                    f"💎 <b>CTT Balance:</b> {ctt_balance:,.0f} CTT\n"
-                    f"<i>Credit Trust Tokens - Your creditworthiness score</i>\n\n"
-                    f"⛽ XRP (gas): {xrp_balance:.4f} XRP\n"
-                    f"<i>Your XRP balance is used for gas fees when interacting with the blockchain.</i>\n\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"<i>These are your on-chain token balances fetched directly from the blockchain.</i>"
-                )
+                        f"💰 <b>Your Token Balances</b>\n\n"
+                        f"<b>Wallet Address:</b>\n"
+                        f"<code>{wallet_address}</code>\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"💵 <b>FTC Balance:</b> {ftc_balance:,.2f} FTC\n"
+                        f"<i>FTCoin - Your main currency</i>\n\n"
+                        f"💎 <b>CTT Balance:</b> {ctt_balance:,.0f} CTT\n"
+                        f"<i>Credit Trust Tokens - Your creditworthiness score</i>\n\n"
+                        f"⛽ XRP (gas): {xrp_balance:.4f} XRP\n"
+                        f"<i>Your XRP balance is used for gas fees when interacting with the blockchain.</i>\n\n"
+                        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"<i>These are your on-chain token balances fetched directly from the blockchain.</i>"
+                    )
 
                 mark_prev_keyboard(data, msg)
                 reply(

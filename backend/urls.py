@@ -13,5 +13,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("webhook/telegram/", telegram_webhook, name="telegram-webhook"),
     path("healthz", health_check),
-    path("deposit_ftct/", include("backend.apps.sys_frontend.urls")), # include frontend URLs
+    path(
+        "deposit_ftct/", include("backend.apps.sys_frontend.urls")
+    ),  # include frontend URLs
 ]

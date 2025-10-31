@@ -41,13 +41,17 @@ def process_deposit_ftct(self, wallet: str, private_key: str, amount: float) -> 
     after_pool = float(loan_service.get_total_pool())
     after_shares = float(loan_service.get_total_shares())
     user_shares = float(loan_service.get_shares_of(wallet))
-    user_value = float(loan_service.get_share_value(user_shares)) if user_shares > 0 else 0.0
-    
+    user_value = (
+        float(loan_service.get_share_value(user_shares)) if user_shares > 0 else 0.0
+    )
 
     # Only return JSON-serializable primitives
-    approve_tx_hash = approve_tx.get("tx_hash") if isinstance(approve_tx, dict) else str(approve_tx)
-    deposit_tx_hash = deposit_tx.get("tx_hash") if isinstance(deposit_tx, dict) else str(deposit_tx)
-
+    approve_tx_hash = (
+        approve_tx.get("tx_hash") if isinstance(approve_tx, dict) else str(approve_tx)
+    )
+    deposit_tx_hash = (
+        deposit_tx.get("tx_hash") if isinstance(deposit_tx, dict) else str(deposit_tx)
+    )
 
     user = Wallet.objects.get(address=wallet).user
     PoolDeposit.objects.create(user=user, amount=amount, tx_hash=deposit_tx_hash)
@@ -61,5 +65,3 @@ def process_deposit_ftct(self, wallet: str, private_key: str, amount: float) -> 
         "user_shares": user_shares,
         "user_value": user_value,
     }
-
-

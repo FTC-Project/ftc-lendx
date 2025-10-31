@@ -7,7 +7,13 @@ from celery import shared_task
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.registry import register
 from backend.apps.telegram_bot.messages import TelegramMessage
-from backend.apps.telegram_bot.flow import reply, start_flow, set_step, clear_flow, mark_prev_keyboard
+from backend.apps.telegram_bot.flow import (
+    reply,
+    start_flow,
+    set_step,
+    clear_flow,
+    mark_prev_keyboard,
+)
 from backend.apps.telegram_bot.fsm_store import FSMStore
 
 from backend.apps.tokens.services.loan_system import LoanSystemService
@@ -36,7 +42,12 @@ def _fmt(amount: float) -> str:
 
 
 def _kb_confirm() -> dict:
-    return {"inline_keyboard": [[{"text": "✅ Confirm", "callback_data": "flow:confirm"}], [{"text": "❌ Cancel", "callback_data": "flow:cancel"}]]}
+    return {
+        "inline_keyboard": [
+            [{"text": "✅ Confirm", "callback_data": "flow:confirm"}],
+            [{"text": "❌ Cancel", "callback_data": "flow:cancel"}],
+        ]
+    }
 
 
 @register(
@@ -63,7 +74,11 @@ class WithdrawCommand(BaseCommand):
         if not state:
             user = TelegramUser.objects.filter(telegram_id=msg.user_id).first()
             if not user or not user.is_registered or user.role != "lender":
-                reply(msg, "⛔ This command is only available to registered lenders.", parse_mode="HTML")
+                reply(
+                    msg,
+                    "⛔ This command is only available to registered lenders.",
+                    parse_mode="HTML",
+                )
                 return
 
             if not hasattr(user, "wallet") or not user.wallet:
@@ -74,11 +89,18 @@ class WithdrawCommand(BaseCommand):
             total_pool = float(ls.get_total_pool())
             total_shares = float(ls.get_total_shares())
             user_shares = float(ls.get_shares_of(user.wallet.address))
-            user_value = float(ls.get_share_value(user_shares)) if user_shares > 0 else 0.0
+            user_value = (
+                float(ls.get_share_value(user_shares)) if user_shares > 0 else 0.0
+            )
 
             # PnL: current value - net contributed
-            deposits = sum(float(d.amount) for d in PoolDeposit.objects.filter(user=user))
-            withdrawals = sum(float(w.principal_out + w.interest_out) for w in PoolWithdrawal.objects.filter(user=user))
+            deposits = sum(
+                float(d.amount) for d in PoolDeposit.objects.filter(user=user)
+            )
+            withdrawals = sum(
+                float(w.principal_out + w.interest_out)
+                for w in PoolWithdrawal.objects.filter(user=user)
+            )
             net_contrib = deposits - withdrawals
             pnl = user_value - net_contrib
 
@@ -108,7 +130,10 @@ class WithdrawCommand(BaseCommand):
         data = state.get("data", {})
 
         # If callback cancel
-        if getattr(msg, "callback_query_id", None) and getattr(msg, "callback_data", None) == "flow:cancel":
+        if (
+            getattr(msg, "callback_query_id", None)
+            and getattr(msg, "callback_data", None) == "flow:cancel"
+        ):
             clear_flow(fsm, msg.chat_id)
             reply(msg, "❌ Cancelled")
             return
@@ -126,8 +151,7 @@ class WithdrawCommand(BaseCommand):
             data["withdraw_amount"] = amt
             set_step(fsm, msg.chat_id, CMD, S_CONFIRM, data)
             text = (
-                "🔎 <b>Confirm Withdrawal</b>\n\n"
-                f"Amount: <b>{_fmt(amt)} FTCT</b>\n"
+                "🔎 <b>Confirm Withdrawal</b>\n\n" f"Amount: <b>{_fmt(amt)} FTCT</b>\n"
             )
             reply(msg, text, reply_markup=_kb_confirm(), parse_mode="HTML", data=data)
             return
@@ -175,13 +199,18 @@ def process_withdraw_task(message_data: dict) -> None:
 
         # Record withdrawal
         # For simplicity attribute all to principal_out; advanced split would require accounting
-        PoolWithdrawal.objects.create(user=user, principal_out=int(ftct_received), interest_out=0, tx_hash=tx_hash)
+        PoolWithdrawal.objects.create(
+            user=user, principal_out=int(ftct_received), interest_out=0, tx_hash=tx_hash
+        )
 
         # Refresh balances
         user_shares = float(ls.get_shares_of(wallet))
         user_value = float(ls.get_share_value(user_shares)) if user_shares > 0 else 0.0
         deposits = sum(float(d.amount) for d in PoolDeposit.objects.filter(user=user))
-        withdrawals = sum(float(w.principal_out + w.interest_out) for w in PoolWithdrawal.objects.filter(user=user))
+        withdrawals = sum(
+            float(w.principal_out + w.interest_out)
+            for w in PoolWithdrawal.objects.filter(user=user)
+        )
         pnl = user_value - (deposits - withdrawals)
 
         text = (
@@ -197,5 +226,3 @@ def process_withdraw_task(message_data: dict) -> None:
     except Exception as e:
         clear_flow(fsm, msg.chat_id)
         reply(msg, f"❌ Withdrawal failed: {e}")
-
-

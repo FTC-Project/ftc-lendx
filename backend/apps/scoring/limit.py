@@ -34,5 +34,6 @@ def calculate_credit_limit(transactions: pd.DataFrame, trust_score: float):
     limit, apr = limit_apr_gate(trust_score)
     affordability_limit = calculate_affordability_limit(affordability)
     limit = min(limit, affordability_limit)
+    final_limit = max(limit, 0)  # Cap limit at 0
 
-    return limit, apr
+    return final_limit, apr

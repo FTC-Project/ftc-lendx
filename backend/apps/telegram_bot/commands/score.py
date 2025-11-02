@@ -207,7 +207,7 @@ class UnifiedScoreCommand(BaseCommand):
             return
         if state.get("command") != CMD:
             return
-        step = state.get("step")
+        step = state.get("step") or S_MENU  # Default to S_MENU if step is missing
         data = state.get("data", {}) or {}
         cb = getattr(msg, "callback_data", None)
         if cb:
@@ -306,6 +306,20 @@ class UnifiedScoreCommand(BaseCommand):
                         parse_mode="HTML",
                     )
                     return
+            elif step == S_TIPS or step == S_DETAILS:
+                # Handle callbacks when viewing tips or details
+                # These steps only have back/cancel, which are handled above
+                # But if any other callback comes through, send them back to menu
+                mark_prev_keyboard(data, msg)
+                reply(
+                    msg,
+                    "Please choose an option from the menu.",
+                    kb_score_menu(),
+                    data=data,
+                    parse_mode="HTML",
+                )
+                set_step(fsm, msg.chat_id, CMD, S_MENU, data)
+                return
             # Unknown callback
             mark_prev_keyboard(data, msg)
             reply(
@@ -315,6 +329,32 @@ class UnifiedScoreCommand(BaseCommand):
                 data=data,
             )
             return
+        
+        # Handle text messages (non-callback) when in flow
+        # If user sends text while in S_TIPS or S_DETAILS, show the menu again
+        if step == S_TIPS:
+            set_step(fsm, msg.chat_id, CMD, S_MENU, data)
+            mark_prev_keyboard(data, msg)
+            reply(
+                msg,
+                "<b>💎 Score Dashboard</b>\n\nGet your score, tier, and see detailed breakdowns.",
+                kb_score_menu(),
+                data=data,
+                parse_mode="HTML",
+            )
+            return
+        elif step == S_DETAILS:
+            set_step(fsm, msg.chat_id, CMD, S_MENU, data)
+            mark_prev_keyboard(data, msg)
+            reply(
+                msg,
+                "<b>💎 Score Dashboard</b>\n\nGet your score, tier, and see detailed breakdowns.",
+                kb_score_menu(),
+                data=data,
+                parse_mode="HTML",
+            )
+            return
+        
         # Fallback: reset flow
         clear_flow(fsm, msg.chat_id)
         reply(msg, "Session lost. Please use /score to start again.")

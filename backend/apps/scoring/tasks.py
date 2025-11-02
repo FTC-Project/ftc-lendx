@@ -312,9 +312,10 @@ def start_scoring_pipeline(user_id: int):
     """
     try:
         user = TelegramUser.objects.get(id=user_id)
+        # Select the most recently added bank account for scoring
         bank_account = BankAccount.objects.filter(
             user=user
-        ).first()  # Just get one account for now
+        ).order_by('-created_at').first()
 
         if not bank_account:
             logger.error(f"No valid bank account found for user: {user_id}")
@@ -362,8 +363,8 @@ def start_scoring_pipeline(user_id: int):
         )
 
         # 4) Prepare data for scoring
-
-        user_transactions = BankTransaction.objects.filter(account__user=user).values()
+        # Use transactions from the selected bank account only
+        user_transactions = BankTransaction.objects.filter(account=bank_account).values()
         df = pd.DataFrame(list(user_transactions))
 
         DataAccessLog.objects.create(

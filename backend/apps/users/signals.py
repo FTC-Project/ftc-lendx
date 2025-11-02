@@ -39,15 +39,31 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
         if instance.kind == "score_updated":
             score = instance.payload.get("score")
             tier = instance.payload.get("tier", "unknown")
-            limit = instance.payload.get("limit")
+            limit = instance.payload.get("limit")                
             if score is not None:
-                text = (
-                    f"<b>🎯 Affordability Score Updated</b>\n\n"
-                    f"Your affordability score has been updated to <b>{score:.2f}</b>. \n\n"
-                    f"Your tier is <b>{tier}</b>. \n\n"
-                    f"Your credit limit is <b>R{limit:,.2f}</b>. \n\n"
-                    f"You can view a detailed breakdown of your score by using the /score command."
-                )
+                if limit == 0:
+                    text = (
+                        f"<b>🎯 Affordability Score Updated</b>\n\n"
+                        f"Your affordability score has been updated to <b>{score:.2f}</b>. \n\n"
+                        f"Your tier is <b>{tier}</b>. \n\n"
+                        f"⚠️ <b>Credit Limit: R{limit:,.2f}</b>\n\n"
+                        f"<b>📋 Why your limit is R0:</b>\n"
+                        f"Your spending is currently higher than your income, which means we can't offer credit at this time.\n\n"
+                        f"<b>💡 How to improve:</b>\n"
+                        f"• Review your spending patterns and reduce expenses\n"
+                        f"• Link another bank account if you have additional income sources\n"
+                        f"• Wait for more transaction history to show better affordability\n"
+                        f"• Build your CTT token balance to improve your score\n\n"
+                        f"You can view a detailed breakdown of your score by using the /score command."
+                    )
+                else:
+                    text = (
+                        f"<b>🎯 Affordability Score Updated</b>\n\n"
+                        f"Your affordability score has been updated to <b>{score:.2f}</b>. \n\n"
+                        f"Your tier is <b>{tier}</b>. \n\n"
+                        f"Your credit limit is <b>R{limit:,.2f}</b>. \n\n"
+                        f"You can view a detailed breakdown of your score by using the /score command."
+                    )
             else:
                 text = (
                     "<b>🎯 Affordability Score Updated</b>\n\n"

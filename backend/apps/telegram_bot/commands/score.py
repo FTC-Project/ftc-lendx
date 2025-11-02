@@ -60,6 +60,26 @@ def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
     loans = Loan.objects.filter(user=snap.user, state="disbursed")
     used_limit = sum(loan.amount for loan in loans)
     remaining_limit = snap.limit - used_limit if used_limit < snap.limit else 0
+    
+    if snap.limit == 0:
+        return (
+            f"<b>📊 Your Unified Score</b>\n\n"
+            f"<b>Score Tier:</b> {snap.score_tier}\n"
+            f"⚠️ <b>Credit Limit:</b> R{snap.limit:,.2f}\n"
+            f"<b>Unified Score:</b> {snap.combined_score}/100\n"
+            f"<b>Credit Score:</b> {snap.credit_score}/100\n"
+            f"<b>Token Score:</b> {snap.token_score}/100\n"
+            f"<b>APR:</b> {snap.apr:.2f}%\n\n"
+            f"<b>📋 Why your limit is R0:</b>\n"
+            f"Your spending is currently higher than your income. We cannot offer credit when expenses exceed earnings.\n\n"
+            f"<b>💡 How to improve:</b>\n"
+            f"• Review and reduce your spending patterns\n"
+            f"• Link another bank account if you have additional income sources\n"
+            f"• Wait for more transaction history to demonstrate better affordability\n"
+            f"• Build your CTT token balance to improve your unified score\n\n"
+            f"<i>Better scores and positive affordability unlock higher limits and lower APR.</i>"
+        )
+    
     return (
         f"<b>📊 Your Unified Score</b>\n\n"
         f"<b>Score Tier:</b> {snap.score_tier}\n"

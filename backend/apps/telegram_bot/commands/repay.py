@@ -26,6 +26,7 @@ from backend.apps.users.models import TelegramUser
 from backend.apps.users.crypto import decrypt_secret
 from backend.apps.loans.models import Loan, Repayment, LoanEvent, RepaymentSchedule
 from backend.apps.tokens.services.loan_system import LoanSystemService
+from backend.apps.tokens.services.ftc_token import FTCTokenService
 from django.conf import settings
 
 import logging
@@ -108,6 +109,39 @@ class RepayCommand(BaseCommand):
         if not state:
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
+
+                # Check if user has wallet
+                if not hasattr(user, "wallet") or not user.wallet:
+                    mark_prev_keyboard({}, msg)
+                    reply(
+                        msg,
+                        "❌ <b>No Wallet Found</b>\n\n"
+                        "You don't have a wallet configured.\n\n"
+                        "Please contact support to set up your wallet.",
+                        parse_mode="HTML",
+                    )
+                    return
+
+                # Check user's XRP balance (needed for gas fees)
+                wallet_address = user.wallet.address
+                ftc_service = FTCTokenService()
+                xrp_balance_wei = ftc_service.web3.eth.get_balance(wallet_address)
+                xrp_balance = float(ftc_service.web3.from_wei(xrp_balance_wei, "ether"))
+
+                # If user has low XRP, tell them to use /buyftc to get some
+                if xrp_balance < 1.0:
+                    mark_prev_keyboard({}, msg)
+                    reply(
+                        msg,
+                        "⛽ <b>Low XRP Balance</b>\n\n"
+                        f"Your current XRP balance: {xrp_balance:.4f} XRP\n\n"
+                        "⚠️ You need XRP (gas) to complete the repayment transaction.\n\n"
+                        "💡 <b>Solution:</b> Use /buyftc to get XRP. "
+                        "The buyftc command will automatically send you test XRP if your balance is low.\n\n"
+                        "<i>After getting XRP, you can return here to complete your repayment.</i>",
+                        parse_mode="HTML",
+                    )
+                    return
 
                 # Get active loans (disbursed state)
                 active_loans = list(

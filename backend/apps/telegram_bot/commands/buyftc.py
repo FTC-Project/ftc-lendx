@@ -293,7 +293,7 @@ class BuyFTCCommand(BaseCommand):
                     msg,
                     "🔢 <b>Enter Custom Amount</b>\n\n"
                     "Please enter the amount of FTC you want to buy.\n\n"
-                    "📊 <b>Valid range:</b> 1 - 300 FTC\n\n"
+                    "📊 <b>Valid range:</b> 1 - 10,000 FTC\n\n"
                     "<i>Type a number and send it.</i>",
                     {
                         "inline_keyboard": [

@@ -122,10 +122,29 @@ class OfframpCommand(BaseCommand):
                     )
                     return
 
-                # Get FTC balance
+                # Get FTC balance and check XRP balance
                 wallet_address = user.wallet.address
                 ftc_service = FTCTokenService()
                 ftc_balance = ftc_service.get_balance(wallet_address)
+
+                # Check user's XRP balance (needed for gas fees)
+                xrp_balance_wei = ftc_service.web3.eth.get_balance(wallet_address)
+                xrp_balance = float(ftc_service.web3.from_wei(xrp_balance_wei, "ether"))
+
+                # If user has low XRP, tell them to use /buyftc to get some
+                if xrp_balance < 1.0:
+                    mark_prev_keyboard({}, msg)
+                    reply(
+                        msg,
+                        "⛽ <b>Low XRP Balance</b>\n\n"
+                        f"Your current XRP balance: {xrp_balance:.4f} XRP\n\n"
+                        "⚠️ You need XRP (gas) to complete the off-ramp transaction.\n\n"
+                        "💡 <b>Solution:</b> Use /buyftc to get XRP. "
+                        "The buyftc command will automatically send you test XRP if your balance is low.\n\n"
+                        "<i>After getting XRP, you can return here to complete your off-ramp.</i>",
+                        parse_mode="HTML",
+                    )
+                    return
 
                 if ftc_balance <= 0:
                     mark_prev_keyboard({}, msg)
@@ -356,6 +375,8 @@ class OfframpCommand(BaseCommand):
                     logger.info(
                         f"[Offramp] Transferring {amount} FTC from user {user.telegram_id} to burn wallet"
                     )
+                    
+                    
                     burn_result = ftc_service.transfer(
                         from_address=wallet_address,
                         to_address=burn_wallet,

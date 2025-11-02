@@ -3,7 +3,7 @@ from django.http import HttpResponse
 
 def terms_of_service_view(request):
     """Render the Terms of Service page with beautiful styling matching the deposit page."""
-    
+
     html = """
     <!DOCTYPE html>
     <html>

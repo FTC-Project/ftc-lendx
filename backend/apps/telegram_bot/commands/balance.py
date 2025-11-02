@@ -9,7 +9,12 @@ from backend.apps.tokens.services.loan_system import LoanSystemService
 from backend.apps.telegram_bot.commands.base import BaseCommand
 from backend.apps.telegram_bot.messages import TelegramMessage
 from backend.apps.telegram_bot.registry import register
-from backend.apps.telegram_bot.flow import reply, mark_prev_keyboard, start_flow, clear_flow
+from backend.apps.telegram_bot.flow import (
+    reply,
+    mark_prev_keyboard,
+    start_flow,
+    clear_flow,
+)
 from backend.apps.telegram_bot.fsm_store import FSMStore
 
 from backend.apps.users.models import TelegramUser
@@ -28,6 +33,7 @@ def _fmt_date(d) -> str:
     if isinstance(d, (datetime, date)):
         return d.strftime("%Y-%m-%d %H:%M")
     return str(d)
+
 
 # -------- Command config --------
 CMD = "balance"
@@ -62,19 +68,17 @@ class BalanceCommand(BaseCommand):
             # Make sure this callback belongs to balance command or create new state
             if not state or state.get("command") != CMD:
                 start_flow(fsm, msg.chat_id, CMD, {}, "balance")
-            
+
             try:
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
-                
+
                 # Get deposit and withdrawal history
-                recent_deposits = (
-                    PoolDeposit.objects.filter(user=user)
-                    .order_by("-created_at")[:10]
-                )
-                recent_withdrawals = (
-                    PoolWithdrawal.objects.filter(user=user)
-                    .order_by("-created_at")[:10]
-                )
+                recent_deposits = PoolDeposit.objects.filter(user=user).order_by(
+                    "-created_at"
+                )[:10]
+                recent_withdrawals = PoolWithdrawal.objects.filter(user=user).order_by(
+                    "-created_at"
+                )[:10]
 
                 # Build deposit history section
                 deposit_history = ""
@@ -83,7 +87,11 @@ class BalanceCommand(BaseCommand):
                         f"📥 <b>Recent Deposits</b> (last {len(recent_deposits)})\n\n"
                     )
                     for deposit in recent_deposits:
-                        tx_link = f"<code>{deposit.tx_hash[:12]}...</code>" if deposit.tx_hash else "pending"
+                        tx_link = (
+                            f"<code>{deposit.tx_hash[:12]}...</code>"
+                            if deposit.tx_hash
+                            else "pending"
+                        )
                         deposit_history += (
                             f"• <b>{float(deposit.amount):,.2f} FTCT</b>\n"
                             f"  {_fmt_date(deposit.created_at)} | TX: {tx_link}\n\n"
@@ -94,12 +102,16 @@ class BalanceCommand(BaseCommand):
                 # Build withdrawal history section
                 withdrawal_history = ""
                 if recent_withdrawals:
-                    withdrawal_history = (
-                        f"📤 <b>Recent Withdrawals</b> (last {len(recent_withdrawals)})\n\n"
-                    )
+                    withdrawal_history = f"📤 <b>Recent Withdrawals</b> (last {len(recent_withdrawals)})\n\n"
                     for withdrawal in recent_withdrawals:
-                        total_amount = float(withdrawal.principal_out + withdrawal.interest_out)
-                        tx_link = f"<code>{withdrawal.tx_hash[:12]}...</code>" if withdrawal.tx_hash else "pending"
+                        total_amount = float(
+                            withdrawal.principal_out + withdrawal.interest_out
+                        )
+                        tx_link = (
+                            f"<code>{withdrawal.tx_hash[:12]}...</code>"
+                            if withdrawal.tx_hash
+                            else "pending"
+                        )
                         withdrawal_history += (
                             f"• <b>{total_amount:,.2f} FTCT</b>\n"
                             f"  Principal: {float(withdrawal.principal_out):,.2f} | "
@@ -116,7 +128,7 @@ class BalanceCommand(BaseCommand):
                     f"━━━━━━━━━━━━━━━━━━━━\n\n"
                     f"{withdrawal_history}"
                 )
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
@@ -228,12 +240,15 @@ class BalanceCommand(BaseCommand):
                         f"• Your Investment (est.): {float(user_value):,.2f} FTCT\n"
                         f"• Your PnL: {pnl:,.2f} FTCT\n"
                     )
-                    
+
                     # Add history button for lenders
                     keyboard = {
                         "inline_keyboard": [
                             [
-                                {"text": "📜 View Deposit/Withdrawal History", "callback_data": "balance:history"}
+                                {
+                                    "text": "📜 View Deposit/Withdrawal History",
+                                    "callback_data": "balance:history",
+                                }
                             ]
                         ]
                     }
@@ -256,7 +271,7 @@ class BalanceCommand(BaseCommand):
 
                 # Update FSM state after successful balance fetch
                 start_flow(fsm, msg.chat_id, CMD, data, "balance")
-                
+
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,

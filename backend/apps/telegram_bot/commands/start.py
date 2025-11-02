@@ -61,7 +61,7 @@ class StartCommand(BaseCommand):
             # Get TOS URL
             public_url = os.getenv("PUBLIC_URL", "")
             tos_url = f"{public_url.rstrip('/')}/tos/" if public_url else "#"
-            
+
             welcome = (
                 "Welcome to Nkadime! 🌟\n\n"
                 "We help you access affordable credit using your banking data.\n"

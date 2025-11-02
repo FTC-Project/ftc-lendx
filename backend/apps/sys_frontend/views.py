@@ -670,7 +670,7 @@ def deposit_ftct_view(request):
                                 container.innerHTML = `
                                     <h1>Deposit Successful!</h1>
                                     <div style="margin: 24px 0; font-size: 18px; color: var(--accent);">
-                                        Deposited ${{amount.toFixed(2)}} FTCT
+                                        Deposited R{{amount.toFixed(2)}} FTCT
                                     </div>
                                     <div style="margin: 24px 0; font-size: 14px; color: var(--muted);">
                                         Feel free to close this page, and to make another deposit please use the /deposit command in Telegram.

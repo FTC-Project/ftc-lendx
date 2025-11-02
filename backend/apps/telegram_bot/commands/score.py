@@ -95,21 +95,70 @@ def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
 
 
 def render_score_details(snap: AffordabilitySnapshot) -> str:
-    f = snap.credit_factors
-    strengths = f.get("strengths", [])
-    weaknesses = f.get("weaknesses", [])
+    """Render credit factors breakdown with human-readable names."""
+    f = snap.credit_factors or {}
+    
+    # Mapping of factor keys to human-readable names
+    factor_names = {
+        "months_on_book": "Months on Book",
+        "direction_ratio": "Expense to Income Ratio",
+        "incoming_volume": "Incoming Volume",
+        "outgoing_volume": "Outgoing Volume",
+        "incoming_variance": "Incoming Variance",
+        "outgoing_variance": "Outgoing Variance",
+        "incoming_frequency": "Incoming Frequency",
+        "outgoing_frequency": "Outgoing Frequency",
+        "affordability_buffer": "Affordability Buffer",
+    }
+    
+    if not f:
+        return "<b>🧾 Score Breakdown</b>\n\n<i>No factor breakdown available.</i>"
+    
+    # Group factors logically
+    account_stability = []
+    transaction_patterns = []
+    affordability_metrics = []
+    
+    for key, value in f.items():
+        if value is None:
+            continue
+            
+        name = factor_names.get(key, key.replace("_", " ").title())
+        formatted_value = f"{float(value):.2f}" if isinstance(value, (int, float)) else str(value)
+        
+        if key in ["months_on_book", "direction_ratio"]:
+            account_stability.append((name, formatted_value))
+        elif key in ["incoming_volume", "outgoing_volume", "incoming_variance", "outgoing_variance", "incoming_frequency", "outgoing_frequency"]:
+            transaction_patterns.append((name, formatted_value))
+        elif key in ["affordability_buffer"]:
+            affordability_metrics.append((name, formatted_value))
+        else:
+            # Fallback for any unknown factors
+            transaction_patterns.append((name, formatted_value))
+    
     details = ""
-    if strengths:
-        details += (
-            "✅ <b>Strengths:</b>\n" + "\n".join(f"• {s}" for s in strengths) + "\n"
-        )
-    if weaknesses:
-        details += (
-            "⚠️ <b>Weaknesses:</b>\n" + "\n".join(f"• {w}" for w in weaknesses) + "\n"
-        )
+    
+    if account_stability:
+        details += "<b>📊 Account Stability</b>\n"
+        for name, value in account_stability:
+            details += f"• {name}: <b>{value}</b>\n"
+        details += "\n"
+    
+    if transaction_patterns:
+        details += "<b>💳 Transaction Patterns</b>\n"
+        for name, value in transaction_patterns:
+            details += f"• {name}: <b>{value}</b>\n"
+        details += "\n"
+    
+    if affordability_metrics:
+        details += "<b>💰 Affordability</b>\n"
+        for name, value in affordability_metrics:
+            details += f"• {name}: <b>{value}</b>\n"
+    
     if not details:
         details = "<i>No factor breakdown available.</i>"
-    return f"<b>🧾 Score Breakdown</b>\n\n" f"{details}"
+    
+    return f"<b>🧾 Score Breakdown</b>\n\n{details}"
 
 
 def render_score_tips() -> str:

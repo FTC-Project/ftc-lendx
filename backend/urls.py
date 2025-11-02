@@ -16,4 +16,5 @@ urlpatterns = [
     path(
         "deposit_ftct/", include("backend.apps.sys_frontend.urls")
     ),  # include frontend URLs
+    path("", include("backend.apps.audit.urls")),  # TOS and other public pages
 ]

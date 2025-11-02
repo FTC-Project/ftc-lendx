@@ -72,6 +72,8 @@ DEFAULT_PERMISSIONS = [
     "ReadTransactionsDebits",
 ]
 
+BOT_USERNAME = "Nkadime_Bot"
+
 # ====== Text Helpers ======
 
 
@@ -255,7 +257,7 @@ def handle_start(msg: TelegramMessage, fsm: FSMStore) -> None:
         reply(msg, err)
         return
 
-    data = {"redirect_uri": "https://example.com/redirect"}  # Mock redirect
+    data = {"redirect_uri": f"https://t.me/{BOT_USERNAME}/"}  # Mock redirect
     start_flow(fsm, msg.chat_id, CMD, data, S_PERMS)
     mark_prev_keyboard(data, msg)
     reply(msg, t_perms_intro(), kb_perms_continue(CB_PERMS_OK), data=data)

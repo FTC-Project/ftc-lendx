@@ -55,7 +55,6 @@ PREV: Dict[str, Optional[str]] = {
 ROLES = [
     ("Borrower", "role:borrower"),
     ("Lender", "role:lender"),
-    ("Admin", "role:admin"),
 ]
 
 _re_sa_id = re.compile(r"^\d{13}$")  # SA ID: 13 digits
@@ -67,17 +66,35 @@ def prompt_for(step: str, old_value: Optional[Dict[str, Any]]) -> str:
         return None if val is None or val == "None" or val == "" else val
 
     prompts = {
-        S_FIRST: "Welcome! Can you confirm your first name?",
+        S_FIRST: "👋 <b>Welcome to Registration!</b>\n\nCan you confirm your first name?",
         S_LAST: "Thanks! Now can you confirm your last name?",
-        S_PHONE: "Can you confirm your South African phone number?\nFormat: +27XXXXXXXXX",
-        S_NATID: "Can you confirm your South African ID number (13 digits)?",
-        S_ROLE: "Can you confirm your role (one only)?",
-        S_ID_PHOTO: (
-            "Please upload a clear photo of your SA ID (front).\n\n"
-            "Tip: Use good lighting; the text must be readable."
+        S_PHONE: (
+            "📱 <b>Phone Number</b>\n\n"
+            "Can you confirm your South African phone number?\n\n"
+            "<i>Format:</i> <code>+27XXXXXXXXX</code>"
         ),
-        S_REVIEW: "Review your details below and press Confirm if everything looks good:",
-        S_CONFIRM: "Almost done! Press Confirm to complete registration.",
+        S_NATID: (
+            "🆔 <b>South African ID</b>\n\n"
+            "Can you confirm your South African ID number?\n\n"
+            "<i>Must be 13 digits</i>"
+        ),
+        S_ROLE: (
+            "👤 <b>Select Your Role</b>\n\n"
+            "Please choose the role that best describes you:"
+        ),
+        S_ID_PHOTO: (
+            "📸 <b>Upload ID Photo</b>\n\n"
+            "Please upload a clear photo of your SA ID (front).\n\n"
+            "💡 <i>Tip: Use good lighting; the text must be readable.</i>"
+        ),
+        S_REVIEW: (
+            "📋 <b>Review Your Details</b>\n\n"
+            "Please review your information below and press <b>Confirm</b> if everything looks good:"
+        ),
+        S_CONFIRM: (
+            "✅ <b>Almost Done!</b>\n\n"
+            "Press <b>Confirm</b> to complete your registration."
+        ),
     }
 
     if step == S_FIRST:
@@ -85,45 +102,48 @@ def prompt_for(step: str, old_value: Optional[Dict[str, Any]]) -> str:
         if val:
             prompts[
                 S_FIRST
-            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            ] += f"\n\n💡 <i>We think it's: <b>{val}</b>. If this is correct, just reply with 'yes'</i>"
     elif step == S_LAST:
         first = safe(old_value.get("first_name", "") if old_value else None)
-        prompts[S_LAST] = f"Thanks {first or ''}! Now can you confirm your last name?"
+        prompts[S_LAST] = f"Thanks{(' ' + first) if first else ''}! Now can you confirm your last name?"
         val = safe(old_value.get("last_name", "") if old_value else None)
         if val:
             prompts[
                 S_LAST
-            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            ] += f"\n\n💡 <i>We think it's: <b>{val}</b>. If this is correct, just reply with 'yes'</i>"
     elif step == S_PHONE:
         val = safe(old_value.get("phone_e164", "") if old_value else None)
         if val:
             prompts[
                 S_PHONE
-            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            ] += f"\n\n💡 <i>We think it's: <code>{val}</code>. If this is correct, just reply with 'yes'</i>"
     elif step == S_NATID:
         val = safe(old_value.get("national_id", "") if old_value else None)
         if val:
             prompts[
                 S_NATID
-            ] += f"\nWe think it's: {val}. \nIf this is correct, just reply with 'yes'"
+            ] += f"\n\n💡 <i>We think it's: <code>{val}</code>. If this is correct, just reply with 'yes'</i>"
     elif step == S_ROLE:
         val = safe(old_value.get("role", "") if old_value else None)
         if val:
             prompts[
                 S_ROLE
-            ] += f"\nWe think it's: {val.capitalize()}. \nIf this is correct, press the button with the checkmark (✅) next to it or select a new role."
+            ] += f"\n\n💡 <i>Current selection: <b>{val.capitalize()}</b>. If this is correct, press the button with the checkmark (✅) next to it, or select a new role below.</i>"
 
     return prompts[step]
 
 
 def render_summary(d: dict) -> str:
     return (
-        "Please confirm your details:\n"
-        f"• Name: {d.get('first_name','')} {d.get('last_name','')}\n"
-        f"• Phone: {d.get('phone_e164','')}\n"
-        f"• SA ID: {d.get('national_id','')}\n"
-        f"• Role: {d.get('role','')}\n"
-        f"• ID Photo: {'✅ uploaded' if d.get('id_photo_uploaded') else '❌ missing'}\n"
+        "📋 <b>Registration Summary</b>\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        f"👤 <b>Name:</b> {d.get('first_name','')} {d.get('last_name','')}\n"
+        f"📱 <b>Phone:</b> <code>{d.get('phone_e164','')}</code>\n"
+        f"🆔 <b>SA ID:</b> <code>{d.get('national_id','')}</code>\n"
+        f"👤 <b>Role:</b> {d.get('role','').capitalize() if d.get('role') else 'Not selected'}\n"
+        f"📸 <b>ID Photo:</b> {'✅ Uploaded' if d.get('id_photo_uploaded') else '❌ Missing'}\n\n"
+        "━━━━━━━━━━━━━━━━━━━━\n\n"
+        "<i>Please review the information above. If everything is correct, press <b>Confirm</b> to complete your registration.</i>"
     )
 
 
@@ -204,19 +224,30 @@ class RegisterCommand(BaseCommand):
                     clear_flow(fsm, msg.chat_id)
                     reply(
                         msg,
-                        "You need to accept the Terms of Service before registering. Please use /start to accept the TOS.",
+                        "❌ <b>Terms of Service Required</b>\n\n"
+                        "You need to accept the Terms of Service before registering.\n\n"
+                        "Please use /start to accept the TOS.",
+                        parse_mode="HTML",
                     )
                     return
                 if user.is_registered:
                     clear_flow(fsm, msg.chat_id)
-                    reply(msg, "You're already registered. Use /help to see commands.")
+                    reply(
+                        msg,
+                        "✅ <b>Already Registered</b>\n\n"
+                        "You're already registered. Use /help to see commands.",
+                        parse_mode="HTML",
+                    )
                     return
             else:
                 # No user yet, ask them to accept TOS first
                 clear_flow(fsm, msg.chat_id)
                 reply(
                     msg,
-                    "I don't think we've met you before! \n Please use /start to begin your journey.",
+                    "👋 <b>Welcome!</b>\n\n"
+                    "I don't think we've met you before!\n\n"
+                    "Please use /start to begin your journey.",
+                    parse_mode="HTML",
                 )
                 return
             data = {
@@ -229,7 +260,13 @@ class RegisterCommand(BaseCommand):
             }
             start_flow(fsm, msg.chat_id, CMD, data, S_FIRST)
             mark_prev_keyboard(data, msg)
-            reply(msg, prompt_for(S_FIRST, data), kb_back_cancel(), data=data)
+            reply(
+                msg,
+                prompt_for(S_FIRST, data),
+                kb_back_cancel(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         # Guard: other command owns this chat
@@ -247,8 +284,10 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "Registration cancelled. You can restart with /register.",
+                    "❌ <b>Registration Cancelled</b>\n\n"
+                    "You can restart with /register.",
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
 
@@ -257,7 +296,12 @@ class RegisterCommand(BaseCommand):
                 if prev is None:
                     clear_flow(fsm, msg.chat_id)
                     mark_prev_keyboard(data, msg)
-                    reply(msg, "Registration cancelled.", data=data)
+                    reply(
+                        msg,
+                        "❌ <b>Registration Cancelled</b>",
+                        data=data,
+                        parse_mode="HTML",
+                    )
                     return
                 set_step(fsm, msg.chat_id, CMD, prev, data)
                 mark_prev_keyboard(data, msg)
@@ -273,19 +317,21 @@ class RegisterCommand(BaseCommand):
                     if prev in (S_REVIEW, S_CONFIRM)
                     else prompt_for(prev, data)
                 )
-                reply(msg, text, kb, data=data)
+                reply(msg, text, kb, data=data, parse_mode="HTML")
                 return
 
             if cb.startswith("role:") and step == S_ROLE:
                 role = cb.split("role:", 1)[1]
                 print(f"Selected role: {role}")
-                if role not in {"borrower", "lender", "admin"}:
+                if role not in {"borrower", "lender"}:
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
-                        "Invalid role. Please choose again.",
+                        "❌ <b>Invalid Role</b>\n\n"
+                        "Please choose a valid role from the options below.",
                         role_keyboard(data.get("role")),
                         data=data,
+                        parse_mode="HTML",
                     )
                     return
                 # POC: User may be exactly one role; store chosen role
@@ -293,7 +339,13 @@ class RegisterCommand(BaseCommand):
                 # Next: ask for ID photo upload
                 set_step(fsm, msg.chat_id, CMD, S_ID_PHOTO, data)
                 mark_prev_keyboard(data, msg)
-                reply(msg, prompt_for(S_ID_PHOTO, data), kb_back_cancel(), data=data)
+                reply(
+                    msg,
+                    prompt_for(S_ID_PHOTO, data),
+                    kb_back_cancel(),
+                    data=data,
+                    parse_mode="HTML",
+                )
                 return
 
             if cb == "flow:confirm" and step in (S_REVIEW, S_CONFIRM):
@@ -308,16 +360,18 @@ class RegisterCommand(BaseCommand):
                     and bool(last)
                     and _re_sa_id.match(nid or "")
                     and _re_phone.match(phone or "")
-                    and role in {"borrower", "lender", "admin"}
+                    and role in {"borrower", "lender"}
                     and data.get("id_photo_uploaded") is True
                 )
                 if not ok:
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
-                        "Some details are missing or invalid. Please go back and fix.",
+                        "⚠️ <b>Validation Error</b>\n\n"
+                        "Some details are missing or invalid. Please go back and fix any issues.",
                         kb_confirm(),
                         data=data,
+                        parse_mode="HTML",
                     )
                     return
                 # Update user info; user is guaranteed to exist at this point
@@ -369,26 +423,41 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 # if lender, tell them they can now deposit to the pool
                 if role == "lender":
-                    # Make a pool account for the user
-                    PoolAccount.objects.create(user=user)
                     reply(
                         msg,
-                        "✅ Registration complete and KYC verified!\n\n"
-                        "You can now /deposit to the pool.",
+                        "✅ <b>Registration Complete!</b>\n\n"
+                        "Your KYC has been verified and your account is active.\n\n"
+                        "━━━━━━━━━━━━━━━━━━━━\n\n"
+                        "💰 <b>Next Steps:</b>\n"
+                        "You can now /deposit to the pool to start earning interest.",
                         data=data,
+                        parse_mode="HTML",
                     )
                     return
                 reply(
                     msg,
-                    "✅ Registration complete and KYC verified!\n\n"
-                    "You can now /linkbank, /apply for a loan, or see /help for more.",
+                    "✅ <b>Registration Complete!</b>\n\n"
+                    "Your KYC has been verified and your account is active.\n\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "🚀 <b>Next Steps:</b>\n"
+                    "You can now:\n"
+                    "• /linkbank - Connect your bank account\n"
+                    "• /apply - Apply for a loan\n"
+                    "• /help - See all available commands",
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
 
             # Unknown callback
             mark_prev_keyboard(data, msg)
-            reply(msg, "Unsupported action. Please use the buttons.", data=data)
+            reply(
+                msg,
+                "❌ <b>Unsupported Action</b>\n\n"
+                "Please use the buttons provided.",
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         # --- Text / Media input per-step ---
@@ -399,9 +468,11 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
+                    "⚠️ <b>Invalid Input</b>\n\n"
                     "Please enter a valid first name or 'yes' if we have the right name on file.",
                     kb_back_cancel(),
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
             if not text.lower() == "yes":
@@ -409,7 +480,13 @@ class RegisterCommand(BaseCommand):
                 data["first_name"] = text
             set_step(fsm, msg.chat_id, CMD, S_LAST, data)
             mark_prev_keyboard(data, msg)
-            reply(msg, prompt_for(S_LAST, data), kb_back_cancel(), data=data)
+            reply(
+                msg,
+                prompt_for(S_LAST, data),
+                kb_back_cancel(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         if step == S_LAST:
@@ -417,9 +494,11 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
+                    "⚠️ <b>Invalid Input</b>\n\n"
                     "Please enter a valid last name or 'yes' if we have the right name on file.",
                     kb_back_cancel(),
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
             if not text.lower() == "yes":
@@ -427,7 +506,13 @@ class RegisterCommand(BaseCommand):
                 data["last_name"] = text
             set_step(fsm, msg.chat_id, CMD, S_PHONE, data)
             mark_prev_keyboard(data, msg)
-            reply(msg, prompt_for(S_PHONE, data), kb_back_cancel(), data=data)
+            reply(
+                msg,
+                prompt_for(S_PHONE, data),
+                kb_back_cancel(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         if step == S_PHONE:
@@ -438,16 +523,25 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "Phone number must be in the format +27XXXXXXXXX. Please enter a valid South African phone number or 'yes' if we have the right number on file.",
+                    "❌ <b>Invalid Phone Number</b>\n\n"
+                    "Phone number must be in the format <code>+27XXXXXXXXX</code>.\n\n"
+                    "Please enter a valid South African phone number or 'yes' if we have the right number on file.",
                     kb_back_cancel(),
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
             if not is_yes:
                 data["phone_e164"] = text
             set_step(fsm, msg.chat_id, CMD, S_NATID, data)
             mark_prev_keyboard(data, msg)
-            reply(msg, prompt_for(S_NATID, data), kb_back_cancel(), data=data)
+            reply(
+                msg,
+                prompt_for(S_NATID, data),
+                kb_back_cancel(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         if step == S_NATID:
@@ -460,9 +554,12 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "SA ID must be **13 digits**. Please enter a valid South African ID number (13 digits) or 'yes' if we have the right ID on file.",
+                    "❌ <b>Invalid ID Number</b>\n\n"
+                    "SA ID must be <b>13 digits</b>.\n\n"
+                    "Please enter a valid South African ID number (13 digits) or 'yes' if we have the right ID on file.",
                     kb_back_cancel(),
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
 
@@ -476,6 +573,7 @@ class RegisterCommand(BaseCommand):
                 prompt_for(S_ROLE, data),
                 role_keyboard(data.get("role")),
                 data=data,
+                parse_mode="HTML",
             )
             return
 
@@ -483,9 +581,11 @@ class RegisterCommand(BaseCommand):
             mark_prev_keyboard(data, msg)
             reply(
                 msg,
+                "⚠️ <b>Action Required</b>\n\n"
                 "Please select a role using the buttons below.",
                 role_keyboard(data.get("role")),
                 data=data,
+                parse_mode="HTML",
             )
             return
 
@@ -498,9 +598,12 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "Please upload a **photo** of your SA ID (front). You can take a new photo or attach an image file.",
+                    "📸 <b>Photo Required</b>\n\n"
+                    "Please upload a photo of your SA ID (front).\n\n"
+                    "You can take a new photo or attach an image file.",
                     kb_back_cancel(),
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
 
@@ -526,31 +629,57 @@ class RegisterCommand(BaseCommand):
                 # Next: review summary
                 set_step(fsm, msg.chat_id, CMD, S_REVIEW, data)
                 mark_prev_keyboard(data, msg)
-                reply(msg, render_summary(data), kb_confirm(), data=data)
+                reply(
+                    msg,
+                    render_summary(data),
+                    kb_confirm(),
+                    data=data,
+                    parse_mode="HTML",
+                )
                 return
 
             except Exception as e:
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    f"Could not process the uploaded file. Please try again (error: {e}).",
+                    f"❌ <b>Upload Error</b>\n\n"
+                    f"Could not process the uploaded file. Please try again.\n\n"
+                    f"<i>Error: {str(e)}</i>",
                     kb_back_cancel(),
                     data=data,
+                    parse_mode="HTML",
                 )
                 return
 
         if step == S_REVIEW:
             # Any text → re-show summary with confirm
             mark_prev_keyboard(data, msg)
-            reply(msg, render_summary(data), kb_confirm(), data=data)
+            reply(
+                msg,
+                render_summary(data),
+                kb_confirm(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         if step == S_CONFIRM:
             # They typed instead of tapping confirm
             mark_prev_keyboard(data, msg)
-            reply(msg, render_summary(data), kb_confirm(), data=data)
+            reply(
+                msg,
+                render_summary(data),
+                kb_confirm(),
+                data=data,
+                parse_mode="HTML",
+            )
             return
 
         # Fallback
         clear_flow(fsm, msg.chat_id)
-        reply(msg, "Session lost. Please /register again.")
+        reply(
+            msg,
+            "❌ <b>Session Lost</b>\n\n"
+            "Please use /register again to restart.",
+            parse_mode="HTML",
+        )

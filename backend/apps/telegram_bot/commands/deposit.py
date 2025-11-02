@@ -11,6 +11,7 @@ from backend.apps.telegram_bot.flow import reply
 from backend.apps.users.models import TelegramUser
 from backend.apps.tokens.services.loan_system import LoanSystemService
 from backend.apps.users.crypto import decrypt_secret
+from backend.apps.users.services.deposit_code import DepositCodeService
 from urllib.parse import urlencode
 
 
@@ -39,13 +40,11 @@ def _format_pool_overview(
     )
 
 
-def _kb_deposit_actions(
-    wallet: str | None = None, private_key: str | None = None
-) -> dict:
+def _kb_deposit_actions(code: str | None = None) -> dict:
     base = _public_deposit_url()
     url = base
-    if wallet and private_key and base != "#":
-        q = urlencode({"wallet": wallet, "private_key": private_key})
+    if code and base != "#":
+        q = urlencode({"code": code})
         url = f"{base}?{q}"
     return {
         "inline_keyboard": [
@@ -119,13 +118,18 @@ def fetch_and_show_pool_overview(message_data: dict) -> None:
 
     # Render overview with actions
     text = _format_pool_overview(total_pool, user_shares, user_value)
-    # Include prefilled params
-    private_key = None
+    # Generate one-time code for secure wallet transfer
+    code = None
     try:
         private_key = decrypt_secret(user.wallet.secret_encrypted)
+        code_service = DepositCodeService()
+        code = code_service.generate_code(
+            wallet_address=user.wallet.address,
+            private_key=private_key,
+        )
     except Exception:
-        private_key = None
-    kb = _kb_deposit_actions(wallet=user.wallet.address, private_key=private_key)
+        code = None
+    kb = _kb_deposit_actions(code=code)
 
     reply(
         msg,

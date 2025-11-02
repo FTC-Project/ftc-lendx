@@ -1,6 +1,7 @@
 from django.db.models.signals import pre_save, post_save
 from django.dispatch import receiver
 
+from backend.apps.pool.models import PoolAccount
 from backend.apps.users.crypto import create_new_user_wallet, encrypt_secret
 from .models import KYCVerification
 from backend.apps.audit.models import DataAccessLog
@@ -42,6 +43,22 @@ def kyc_on_verified(sender, instance: KYCVerification, **kwargs):
             kind="wallet_created",
             payload={
                 "address": evm_address,
-                "private_key": private_key,
             },
         )
+        if instance.user.role == "lender":
+            PoolAccount.objects.create(user=instance.user)
+            # Now make a wallet for the lender
+            private_key, evm_address = create_new_user_wallet()
+            Wallet.objects.create(
+                user=instance.user,
+                network="xrpl",
+                address=evm_address,
+                secret_encrypted=encrypt_secret(private_key),
+            )
+            Notification.objects.create(
+                user=instance.user,
+                kind="lender_wallet_created",
+                payload={
+                    "address": evm_address,
+                },
+            )

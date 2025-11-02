@@ -369,8 +369,6 @@ class RegisterCommand(BaseCommand):
                 mark_prev_keyboard(data, msg)
                 # if lender, tell them they can now deposit to the pool
                 if role == "lender":
-                    # Make a pool account for the user
-                    PoolAccount.objects.create(user=user)
                     reply(
                         msg,
                         "✅ Registration complete and KYC verified!\n\n"

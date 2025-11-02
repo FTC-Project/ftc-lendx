@@ -28,7 +28,7 @@ def deposit_ftct_view(request):
             wallet_q = ""
             key_q = ""
             key_masked = ""
-            
+
             # Retrieve wallet data from Redis using code
             if code:
                 code_service = DepositCodeService()
@@ -39,7 +39,9 @@ def deposit_ftct_view(request):
                     # Mask private key: show first 6 chars, rest as dots
                     if private_key_full:
                         if len(private_key_full) > 6:
-                            key_masked = private_key_full[:6] + "•" * (len(private_key_full) - 6)
+                            key_masked = private_key_full[:6] + "•" * (
+                                len(private_key_full) - 6
+                            )
                         else:
                             key_masked = private_key_full
                         # Store full key in a hidden field (will be sent in POST)
@@ -110,7 +112,7 @@ def deposit_ftct_view(request):
                 private_key_help = '<div style="margin-top:4px; font-size:11px; color:var(--muted);">Auto-filled via secure code (masked). Full key retrieved from secure storage. You can override by entering a different key.</div>'
             else:
                 private_key_input = '<input type="password" name="private_key" placeholder="0x..." required />'
-                private_key_help = ''
+                private_key_help = ""
 
             html = f"""
                 <html>
@@ -310,10 +312,10 @@ def deposit_ftct_view(request):
 
         elif request.method == "POST":
             print("POST data:", request.POST)
-            
+
             # Get code from POST data
             code = request.POST.get("code", "").strip()
-            
+
             # Retrieve wallet and private key from Redis using code (one-time use)
             wallet = ""
             private_key = ""
@@ -325,17 +327,17 @@ def deposit_ftct_view(request):
                     wallet = wallet_data.get("wallet", "").strip()
                     private_key = wallet_data.get("private_key", "").strip()
                     code_valid = True
-            
+
             # If code retrieval failed, fall back to POST values (manual entry)
             wallet_post = request.POST.get("wallet", "").strip()
             private_key_post = request.POST.get("private_key", "").strip()
-            
+
             # Use POST values only if code retrieval failed
             if not wallet:
                 wallet = wallet_post
             if not private_key:
                 private_key = private_key_post
-            
+
             amount_str = request.POST.get("amount", "0").strip()
 
             # Validate inputs
@@ -391,7 +393,7 @@ def deposit_ftct_view(request):
                     args=[wallet, private_key, float(amount)],
                 )
                 task_id = task.id
-                
+
                 # Initialize status store (task will update it as it progresses)
                 status_store = DepositStatusStore()
                 status_store.create(task_id, wallet, float(amount))
@@ -748,61 +750,61 @@ def deposit_status_view(request, task_id: str):
     try:
         status_store = DepositStatusStore()
         status_data = status_store.get(task_id)
-        
+
         if not status_data:
             # Fallback to Celery result if status store not found
             result = AsyncResult(task_id, app=app)
             if result.ready():
                 if result.successful():
-                    return JsonResponse({
-                        'status': 'SUCCESS',
-                        'result': result.result,
-                        'stage': 'completed'
-                    })
+                    return JsonResponse(
+                        {
+                            "status": "SUCCESS",
+                            "result": result.result,
+                            "stage": "completed",
+                        }
+                    )
                 else:
-                    return JsonResponse({
-                        'status': 'FAILURE',
-                        'error': str(result.info) if result.info else 'Task failed',
-                        'stage': 'error'
-                    })
+                    return JsonResponse(
+                        {
+                            "status": "FAILURE",
+                            "error": str(result.info) if result.info else "Task failed",
+                            "stage": "error",
+                        }
+                    )
             else:
-                return JsonResponse({
-                    'status': 'PENDING',
-                    'stage': 'processing',
-                    'state': result.state
-                })
-        
+                return JsonResponse(
+                    {"status": "PENDING", "stage": "processing", "state": result.state}
+                )
+
         # Use status store data (includes blockchain transaction status)
         response_data = {
-            'status': status_data.get('status', 'pending'),
-            'stage': status_data.get('stage', 'initializing'),
-            'approve_tx_hash': status_data.get('approve_tx_hash'),
-            'approve_tx_status': status_data.get('approve_tx_status'),
-            'deposit_tx_hash': status_data.get('deposit_tx_hash'),
-            'deposit_tx_status': status_data.get('deposit_tx_status'),
+            "status": status_data.get("status", "pending"),
+            "stage": status_data.get("stage", "initializing"),
+            "approve_tx_hash": status_data.get("approve_tx_hash"),
+            "approve_tx_status": status_data.get("approve_tx_status"),
+            "deposit_tx_hash": status_data.get("deposit_tx_hash"),
+            "deposit_tx_status": status_data.get("deposit_tx_status"),
         }
-        
+
         # Include result data if successful
-        if status_data.get('status') == 'success':
-            response_data['result'] = {
-                'approve_tx_hash': status_data.get('approve_tx_hash'),
-                'deposit_tx_hash': status_data.get('deposit_tx_hash'),
-                'before_pool': status_data.get('before_pool'),
-                'before_shares': status_data.get('before_shares'),
-                'after_pool': status_data.get('after_pool'),
-                'after_shares': status_data.get('after_shares'),
-                'user_shares': status_data.get('user_shares'),
-                'user_value': status_data.get('user_value'),
+        if status_data.get("status") == "success":
+            response_data["result"] = {
+                "approve_tx_hash": status_data.get("approve_tx_hash"),
+                "deposit_tx_hash": status_data.get("deposit_tx_hash"),
+                "before_pool": status_data.get("before_pool"),
+                "before_shares": status_data.get("before_shares"),
+                "after_pool": status_data.get("after_pool"),
+                "after_shares": status_data.get("after_shares"),
+                "user_shares": status_data.get("user_shares"),
+                "user_value": status_data.get("user_value"),
             }
         # Include error if failed
-        if status_data.get('status') == 'error':
-            response_data['error'] = status_data.get('error', 'Unknown error')
-        
+        if status_data.get("status") == "error":
+            response_data["error"] = status_data.get("error", "Unknown error")
+
         return JsonResponse(response_data)
-        
+
     except Exception as e:
-        return JsonResponse({
-            'status': 'FAILURE',
-            'error': str(e),
-            'stage': 'error'
-        }, status=500)
+        return JsonResponse(
+            {"status": "FAILURE", "error": str(e), "stage": "error"}, status=500
+        )

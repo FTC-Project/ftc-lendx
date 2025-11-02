@@ -3,6 +3,7 @@ Service for managing one-time deposit codes in Redis.
 These codes allow secure transfer of wallet address and private key
 from Telegram bot to the web frontend.
 """
+
 import json
 import secrets
 import time
@@ -87,4 +88,3 @@ class DepositCodeService:
             }
         except (json.JSONDecodeError, KeyError):
             return None
-

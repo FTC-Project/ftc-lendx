@@ -105,7 +105,9 @@ def prompt_for(step: str, old_value: Optional[Dict[str, Any]]) -> str:
             ] += f"\n\n💡 <i>We think it's: <b>{val}</b>. If this is correct, just reply with 'yes'</i>"
     elif step == S_LAST:
         first = safe(old_value.get("first_name", "") if old_value else None)
-        prompts[S_LAST] = f"Thanks{(' ' + first) if first else ''}! Now can you confirm your last name?"
+        prompts[S_LAST] = (
+            f"Thanks{(' ' + first) if first else ''}! Now can you confirm your last name?"
+        )
         val = safe(old_value.get("last_name", "") if old_value else None)
         if val:
             prompts[
@@ -453,8 +455,7 @@ class RegisterCommand(BaseCommand):
             mark_prev_keyboard(data, msg)
             reply(
                 msg,
-                "❌ <b>Unsupported Action</b>\n\n"
-                "Please use the buttons provided.",
+                "❌ <b>Unsupported Action</b>\n\n" "Please use the buttons provided.",
                 data=data,
                 parse_mode="HTML",
             )
@@ -679,7 +680,6 @@ class RegisterCommand(BaseCommand):
         clear_flow(fsm, msg.chat_id)
         reply(
             msg,
-            "❌ <b>Session Lost</b>\n\n"
-            "Please use /register again to restart.",
+            "❌ <b>Session Lost</b>\n\n" "Please use /register again to restart.",
             parse_mode="HTML",
         )

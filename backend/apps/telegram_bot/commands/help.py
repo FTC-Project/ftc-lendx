@@ -88,37 +88,117 @@ def kb_main_menu(role_status: str) -> dict:
     """Main menu based on user role"""
     if role_status == "unregistered":
         rows = [
-            [{"text": "🚀 Getting Started", "callback_data": f"{CB_SECTION}{SECTION_GETTING_STARTED}"}],
-            [{"text": "📚 All Commands", "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}"}],
-            [{"text": "💰 About FTCoin", "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}"}],
+            [
+                {
+                    "text": "🚀 Getting Started",
+                    "callback_data": f"{CB_SECTION}{SECTION_GETTING_STARTED}",
+                }
+            ],
+            [
+                {
+                    "text": "📚 All Commands",
+                    "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}",
+                }
+            ],
+            [
+                {
+                    "text": "💰 About FTCoin",
+                    "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}",
+                }
+            ],
             [{"text": "❓ FAQs", "callback_data": f"{CB_SECTION}{SECTION_FAQS}"}],
             [{"text": "❌ Close", "callback_data": "flow:cancel"}],
         ]
     elif role_status == "borrower":
         rows = [
-            [{"text": "📋 All Commands", "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}"}],
-            [{"text": "💳 Borrower Guide", "callback_data": f"{CB_SECTION}{SECTION_BORROWER_GUIDE}"}],
-            [{"text": "🔄 Loan Process", "callback_data": f"{CB_SECTION}{SECTION_LOAN_PROCESS}"}],
-            [{"text": "💵 Repayment", "callback_data": f"{CB_SECTION}{SECTION_REPAYMENT}"}],
-            [{"text": "💰 About FTCoin", "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}"}],
+            [
+                {
+                    "text": "📋 All Commands",
+                    "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}",
+                }
+            ],
+            [
+                {
+                    "text": "💳 Borrower Guide",
+                    "callback_data": f"{CB_SECTION}{SECTION_BORROWER_GUIDE}",
+                }
+            ],
+            [
+                {
+                    "text": "🔄 Loan Process",
+                    "callback_data": f"{CB_SECTION}{SECTION_LOAN_PROCESS}",
+                }
+            ],
+            [
+                {
+                    "text": "💵 Repayment",
+                    "callback_data": f"{CB_SECTION}{SECTION_REPAYMENT}",
+                }
+            ],
+            [
+                {
+                    "text": "💰 About FTCoin",
+                    "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}",
+                }
+            ],
             [{"text": "❓ FAQs", "callback_data": f"{CB_SECTION}{SECTION_FAQS}"}],
             [{"text": "❌ Close", "callback_data": "flow:cancel"}],
         ]
     elif role_status == "lender":
         rows = [
-            [{"text": "📋 All Commands", "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}"}],
-            [{"text": "💼 Lender Guide", "callback_data": f"{CB_SECTION}{SECTION_LENDER_GUIDE}"}],
-            [{"text": "💰 Pool & Deposits", "callback_data": f"{CB_SECTION}{SECTION_POOL_DEPOSITS}"}],
-            [{"text": "💸 Withdrawals", "callback_data": f"{CB_SECTION}{SECTION_POOL_WITHDRAWALS}"}],
-            [{"text": "💰 About FTCoin", "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}"}],
+            [
+                {
+                    "text": "📋 All Commands",
+                    "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}",
+                }
+            ],
+            [
+                {
+                    "text": "💼 Lender Guide",
+                    "callback_data": f"{CB_SECTION}{SECTION_LENDER_GUIDE}",
+                }
+            ],
+            [
+                {
+                    "text": "💰 Pool & Deposits",
+                    "callback_data": f"{CB_SECTION}{SECTION_POOL_DEPOSITS}",
+                }
+            ],
+            [
+                {
+                    "text": "💸 Withdrawals",
+                    "callback_data": f"{CB_SECTION}{SECTION_POOL_WITHDRAWALS}",
+                }
+            ],
+            [
+                {
+                    "text": "💰 About FTCoin",
+                    "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}",
+                }
+            ],
             [{"text": "❓ FAQs", "callback_data": f"{CB_SECTION}{SECTION_FAQS}"}],
             [{"text": "❌ Close", "callback_data": "flow:cancel"}],
         ]
     else:  # user (registered but role unclear or general)
         rows = [
-            [{"text": "📋 All Commands", "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}"}],
-            [{"text": "🚀 Getting Started", "callback_data": f"{CB_SECTION}{SECTION_GETTING_STARTED}"}],
-            [{"text": "💰 About FTCoin", "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}"}],
+            [
+                {
+                    "text": "📋 All Commands",
+                    "callback_data": f"{CB_SECTION}{SECTION_COMMANDS}",
+                }
+            ],
+            [
+                {
+                    "text": "🚀 Getting Started",
+                    "callback_data": f"{CB_SECTION}{SECTION_GETTING_STARTED}",
+                }
+            ],
+            [
+                {
+                    "text": "💰 About FTCoin",
+                    "callback_data": f"{CB_SECTION}{SECTION_FTC_INFO}",
+                }
+            ],
             [{"text": "❓ FAQs", "callback_data": f"{CB_SECTION}{SECTION_FAQS}"}],
             [{"text": "❌ Close", "callback_data": "flow:cancel"}],
         ]
@@ -133,33 +213,111 @@ def kb_faq_menu(role_status: str) -> dict:
     """FAQ menu based on role"""
     rows = []
     if role_status == "unregistered":
-        rows.extend([
-            [{"text": "What is Nkadime?", "callback_data": f"{CB_FAQ}{FAQ_WHAT_IS_NKADIME}"}],
-            [{"text": "How do I get started?", "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_START}"}],
-            [{"text": "How do I register?", "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_REGISTER}"}],
-        ])
+        rows.extend(
+            [
+                [
+                    {
+                        "text": "What is Nkadime?",
+                        "callback_data": f"{CB_FAQ}{FAQ_WHAT_IS_NKADIME}",
+                    }
+                ],
+                [
+                    {
+                        "text": "How do I get started?",
+                        "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_START}",
+                    }
+                ],
+                [
+                    {
+                        "text": "How do I register?",
+                        "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_REGISTER}",
+                    }
+                ],
+            ]
+        )
     elif role_status == "borrower":
-        rows.extend([
-            [{"text": "How do I apply for a loan?", "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_BORROW}"}],
-            [{"text": "How do I repay my loan?", "callback_data": f"{CB_FAQ}{FAQ_REPAYMENT_OPTIONS}"}],
-            [{"text": "What if I'm late on payments?", "callback_data": f"{CB_FAQ}{FAQ_LATE_PAYMENTS}"}],
-            [{"text": "How are interest rates determined?", "callback_data": f"{CB_FAQ}{FAQ_INTEREST_RATES}"}],
-            [{"text": "What is my credit score?", "callback_data": f"{CB_FAQ}{FAQ_CREDIT_SCORE}"}],
-        ])
+        rows.extend(
+            [
+                [
+                    {
+                        "text": "How do I apply for a loan?",
+                        "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_BORROW}",
+                    }
+                ],
+                [
+                    {
+                        "text": "How do I repay my loan?",
+                        "callback_data": f"{CB_FAQ}{FAQ_REPAYMENT_OPTIONS}",
+                    }
+                ],
+                [
+                    {
+                        "text": "What if I'm late on payments?",
+                        "callback_data": f"{CB_FAQ}{FAQ_LATE_PAYMENTS}",
+                    }
+                ],
+                [
+                    {
+                        "text": "How are interest rates determined?",
+                        "callback_data": f"{CB_FAQ}{FAQ_INTEREST_RATES}",
+                    }
+                ],
+                [
+                    {
+                        "text": "What is my credit score?",
+                        "callback_data": f"{CB_FAQ}{FAQ_CREDIT_SCORE}",
+                    }
+                ],
+            ]
+        )
     elif role_status == "lender":
-        rows.extend([
-            [{"text": "How do I deposit to the pool?", "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_LEND}"}],
-            [{"text": "Is the pool safe?", "callback_data": f"{CB_FAQ}{FAQ_POOL_SAFETY}"}],
-            [{"text": "How long do withdrawals take?", "callback_data": f"{CB_FAQ}{FAQ_WITHDRAWAL_TIME}"}],
-        ])
-    
+        rows.extend(
+            [
+                [
+                    {
+                        "text": "How do I deposit to the pool?",
+                        "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_LEND}",
+                    }
+                ],
+                [
+                    {
+                        "text": "Is the pool safe?",
+                        "callback_data": f"{CB_FAQ}{FAQ_POOL_SAFETY}",
+                    }
+                ],
+                [
+                    {
+                        "text": "How long do withdrawals take?",
+                        "callback_data": f"{CB_FAQ}{FAQ_WITHDRAWAL_TIME}",
+                    }
+                ],
+            ]
+        )
+
     # Common FAQs for all
-    rows.extend([
-        [{"text": "What is FTCoin (FTC)?", "callback_data": f"{CB_FAQ}{FAQ_WHAT_IS_FTC}"}],
-        [{"text": "How do I get FTC?", "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_GET_FTC}"}],
-        [{"text": "How do I link my bank?", "callback_data": f"{CB_FAQ}{FAQ_LINK_BANK}"}],
-        [{"text": "Need more help?", "callback_data": f"{CB_FAQ}{FAQ_SUPPORT}"}],
-    ])
+    rows.extend(
+        [
+            [
+                {
+                    "text": "What is FTCoin (FTC)?",
+                    "callback_data": f"{CB_FAQ}{FAQ_WHAT_IS_FTC}",
+                }
+            ],
+            [
+                {
+                    "text": "How do I get FTC?",
+                    "callback_data": f"{CB_FAQ}{FAQ_HOW_TO_GET_FTC}",
+                }
+            ],
+            [
+                {
+                    "text": "How do I link my bank?",
+                    "callback_data": f"{CB_FAQ}{FAQ_LINK_BANK}",
+                }
+            ],
+            [{"text": "Need more help?", "callback_data": f"{CB_FAQ}{FAQ_SUPPORT}"}],
+        ]
+    )
     rows.append([{"text": "⬅️ Back to Menu", "callback_data": CB_MENU}])
     return _kb(rows)
 
@@ -200,16 +358,16 @@ def render_commands(user: Optional[TelegramUser], role_status: str) -> str:
     """Render all available commands based on user role"""
     text = "📋 <b>All Available Commands</b>\n\n"
     text += "━━━━━━━━━━━━━━━━━━━━\n\n"
-    
+
     # Public commands
     text += "🌐 <b>Public Commands (Everyone)</b>\n\n"
     text += "• <code>/start</code> - Welcome and accept Terms of Service\n"
     text += "• <code>/help</code> - Show this help menu\n\n"
-    
+
     if role_status == "unregistered":
         text += "💡 <i>Register to unlock more commands. Use /start to begin!</i>\n"
         return text
-    
+
     # User commands (registered)
     text += "👤 <b>Registered User Commands</b>\n\n"
     text += "• <code>/register</code> - Complete registration and KYC verification\n"
@@ -218,20 +376,20 @@ def render_commands(user: Optional[TelegramUser], role_status: str) -> str:
     text += "• <code>/score</code> - View your credit score (CTT tokens) and tips\n"
     text += "• <code>/buyftc</code> - Buy FTCoin with ZAR\n"
     text += "• <code>/offramp</code> - Convert FTCoin to ZAR\n\n"
-    
+
     if role_status == "borrower":
         text += "💳 <b>Borrower Commands</b>\n\n"
         text += "• <code>/apply</code> - Apply for a loan\n"
         text += "• <code>/status</code> - Check your most recent loan status\n"
         text += "• <code>/repay</code> - Repay your loan\n"
         text += "• <code>/history</code> - View your loan history\n\n"
-    
+
     if role_status == "lender":
         text += "💰 <b>Lender Commands</b>\n\n"
         text += "• <code>/deposit</code> - Deposit FTCT to the lending pool\n"
         text += "• <code>/withdraw</code> - Withdraw FTCT from the lending pool\n"
         text += "• <code>/balance</code> - View pool balance and deposit/withdrawal history\n\n"
-    
+
     text += "💡 <i>Tip: Commands are case-insensitive. Use any command to see interactive guidance.</i>"
     return text
 
@@ -829,7 +987,9 @@ def render_faq_answer(faq_key: str) -> str:
             "Browse by category to find what you need!"
         ),
     }
-    return faqs.get(faq_key, "I couldn't find that FAQ. Please try again from the menu.")
+    return faqs.get(
+        faq_key, "I couldn't find that FAQ. Please try again from the menu."
+    )
 
 
 # ---------------------------
@@ -1137,7 +1297,6 @@ class HelpCommand(BaseCommand):
         clear_flow(fsm, msg.chat_id)
         reply(
             msg,
-            "❌ <b>Session Lost</b>\n\n"
-            "Please use <code>/help</code> again.",
+            "❌ <b>Session Lost</b>\n\n" "Please use <code>/help</code> again.",
             parse_mode="HTML",
         )

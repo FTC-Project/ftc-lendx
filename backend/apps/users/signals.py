@@ -154,8 +154,6 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
                 f"💰 After Shares: <b>{after_shares:,}</b>\n"
                 "You can view your deposit details by using /balance"
             )
-            
-            
 
         else:
             # For other kinds, do not send a message

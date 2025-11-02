@@ -2,6 +2,7 @@
 Redis-based store for tracking deposit transaction status.
 Similar to FSMStore but for tracking on-chain transaction progress.
 """
+
 import json
 import time
 from typing import Optional, Dict, Any
@@ -46,7 +47,7 @@ class DepositStatusStore:
         raw = self.redis.get(key)
         if not raw:
             return
-        
+
         data = json.loads(raw)
         data["stage"] = stage
         data["updated_at"] = int(time.time())
@@ -77,15 +78,17 @@ class DepositStatusStore:
         raw = self.redis.get(key)
         if not raw:
             return
-        
+
         data = json.loads(raw)
-        data.update({
-            "status": "success",
-            "stage": "completed",
-            "updated_at": int(time.time()),
-            "approve_tx_status": "confirmed",
-            "deposit_tx_status": "confirmed",
-        })
+        data.update(
+            {
+                "status": "success",
+                "stage": "completed",
+                "updated_at": int(time.time()),
+                "approve_tx_status": "confirmed",
+                "deposit_tx_status": "confirmed",
+            }
+        )
         # Merge in result data (tx hashes, metrics, etc.)
         data.update(result)
         self.redis.setex(key, TTL, json.dumps(data))
@@ -96,13 +99,15 @@ class DepositStatusStore:
         raw = self.redis.get(key)
         if not raw:
             return
-        
+
         data = json.loads(raw)
-        data.update({
-            "status": "error",
-            "error": error,
-            "updated_at": int(time.time()),
-        })
+        data.update(
+            {
+                "status": "error",
+                "error": error,
+                "updated_at": int(time.time()),
+            }
+        )
         self.redis.setex(key, TTL, json.dumps(data))
 
     def get(self, task_id: str) -> Optional[Dict[str, Any]]:
@@ -111,16 +116,16 @@ class DepositStatusStore:
         raw = self.redis.get(key)
         if not raw:
             return None
-        
+
         data = json.loads(raw)
-        
+
         # Check blockchain status for pending transactions
         if data.get("approve_tx_hash") and data.get("approve_tx_status") == "pending":
             data["approve_tx_status"] = self._check_tx_status(data["approve_tx_hash"])
-        
+
         if data.get("deposit_tx_hash") and data.get("deposit_tx_status") == "pending":
             data["deposit_tx_status"] = self._check_tx_status(data["deposit_tx_hash"])
-        
+
         return data
 
     def _check_tx_status(self, tx_hash: str) -> str:
@@ -130,8 +135,9 @@ class DepositStatusStore:
         """
         try:
             from backend.apps.tokens.services.ftc_token import FTCTokenService
+
             service = FTCTokenService()
-            
+
             receipt = service.web3.eth.get_transaction_receipt(tx_hash)
             if receipt:
                 return "confirmed" if receipt["status"] == 1 else "failed"
@@ -144,4 +150,3 @@ class DepositStatusStore:
         """Delete deposit status (cleanup)."""
         key = f"{KEY_PREFIX}{task_id}"
         self.redis.delete(key)
-

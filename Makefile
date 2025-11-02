@@ -14,7 +14,7 @@ build:
 
 # View logs
 logs:
-	docker compose -f compose/docker-compose.dev.yml logs -f web celery_worker
+	docker compose -f compose/docker-compose.dev.yml logs -f web celery_telegram_worker celery_scoring_worker
 
 # Run any manage.py command: make manage CMD=migrate
 manage:

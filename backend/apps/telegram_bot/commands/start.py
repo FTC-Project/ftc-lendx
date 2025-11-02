@@ -122,8 +122,8 @@ class StartCommand(BaseCommand):
                     "━━━━━━━━━━━━━━━━━━━━\n\n"
                     "📋 <b>Get Started:</b>\n\n"
                     "To begin, we'll need to verify you and have you select a role.\n"
-                    "You can do this by using the <code>/register</code> command.\n\n"
-                    "💡 <i>Otherwise, you can use the <code>/help</code> command to see all available commands and some FAQs.</i>"
+                    "You can do this by using the /register command.\n\n"
+                    "💡 <i>Otherwise, you can use the /help command to see all available commands and some FAQs.</i>"
                 )
                 reply(
                     msg,

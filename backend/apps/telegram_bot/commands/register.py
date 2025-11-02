@@ -197,6 +197,121 @@ def download_telegram_file(file_id: str) -> Tuple[bytes, str]:
         ) from e
 
 
+def normalize_phone_number(phone: str) -> Optional[str]:
+    """
+    Normalize South African phone number to E.164 format.
+    Handles various input formats:
+    - +27XXXXXXXXX
+    - 0XXXXXXXXX
+    - 27XXXXXXXXX
+    - (XXX) XXX-XXXX
+    Returns normalized number or None if invalid.
+    """
+    if not phone:
+        return None
+    
+    # Remove all non-digit characters except +
+    cleaned = re.sub(r'[^\d+]', '', phone.strip())
+    
+    # Handle different formats
+    if cleaned.startswith('+27'):
+        # Already in correct format, just ensure it's exactly 12 digits after +
+        digits = cleaned[3:]
+        if len(digits) == 9 and digits[0] in ['1', '2', '6', '7', '8']:
+            return f"+27{digits}"
+    
+    elif cleaned.startswith('27'):
+        # Missing + prefix
+        digits = cleaned[2:]
+        if len(digits) == 9 and digits[0] in ['1', '2', '6', '7', '8']:
+            return f"+27{digits}"
+    
+    elif cleaned.startswith('0'):
+        # Local format (remove leading 0)
+        digits = cleaned[1:]
+        if len(digits) == 9 and digits[0] in ['1', '2', '6', '7', '8']:
+            return f"+27{digits}"
+    
+    return None
+
+
+def validate_sa_id_number(id_number: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate South African ID number with comprehensive checks.
+    Returns (is_valid, error_message).
+    
+    SA ID format: YYMMDDGSSSCAZ
+    - YYMMDD: Date of birth
+    - G: Gender (0-4 = female, 5-9 = male)
+    - SSS: Sequence number
+    - C: Citizenship (0 = SA, 1 = non-SA)
+    - A: Race (not used anymore but kept for checksum)
+    - Z: Checksum digit (Luhn algorithm)
+    """
+    if not id_number:
+        return False, "ID number cannot be empty"
+    
+    # Remove spaces and dashes
+    id_clean = re.sub(r'[\s\-]', '', id_number.strip())
+    
+    # Must be exactly 13 digits
+    if not re.match(r'^\d{13}$', id_clean):
+        return False, "ID number must be exactly 13 digits"
+    
+    # Extract components
+    birth_date_str = id_clean[:6]  # YYMMDD
+    gender_digit = int(id_clean[6])
+    citizenship_digit = int(id_clean[10])
+    checksum_digit = int(id_clean[12])
+    
+    # Validate date of birth
+    try:
+        year = int(birth_date_str[:2])
+        month = int(birth_date_str[2:4])
+        day = int(birth_date_str[4:6])
+        
+        # Handle century (00-21 = 2000-2021, 22-99 = 1922-1999)
+        if year <= 21:
+            full_year = 2000 + year
+        else:
+            full_year = 1900 + year
+        
+        # Validate date
+        from datetime import datetime
+        datetime(full_year, month, day)
+    except (ValueError, TypeError):
+        return False, "ID number contains an invalid date of birth"
+    
+    # Validate gender digit (0-9 are valid, but 0-4 typically female, 5-9 male)
+    if gender_digit < 0 or gender_digit > 9:
+        return False, "ID number has invalid gender digit"
+    
+    # Validate citizenship (0 = SA citizen, 1 = permanent resident)
+    if citizenship_digit not in [0, 1]:
+        return False, "ID number has invalid citizenship digit"
+    
+    # Luhn algorithm checksum validation
+    def luhn_checksum(id_str: str) -> int:
+        """Calculate Luhn checksum for SA ID."""
+        # Sum of digits in odd positions (1-indexed)
+        sum_odd = sum(int(id_str[i]) for i in range(0, 12, 2))
+        
+        # For even positions, multiply by 2 and sum digits
+        sum_even = 0
+        for i in range(1, 12, 2):
+            doubled = int(id_str[i]) * 2
+            sum_even += doubled if doubled < 10 else (doubled % 10) + (doubled // 10)
+        
+        total = sum_odd + sum_even
+        return (10 - (total % 10)) % 10
+    
+    expected_checksum = luhn_checksum(id_clean)
+    if checksum_digit != expected_checksum:
+        return False, f"ID number checksum validation failed. Expected checksum: {expected_checksum}, got: {checksum_digit}"
+    
+    return True, None
+
+
 @register(
     name=CMD,
     aliases=[f"/{CMD}"],
@@ -351,31 +466,60 @@ class RegisterCommand(BaseCommand):
                 return
 
             if cb == "flow:confirm" and step in (S_REVIEW, S_CONFIRM):
-                # Final validations (POC: first/last/national_id, role present, id document uploaded)
+                # Final validations with detailed error messages
                 first = (data.get("first_name") or "").strip()
                 last = (data.get("last_name") or "").strip()
                 phone = (data.get("phone_e164") or "").strip()
                 nid = (data.get("national_id") or "").strip()
                 role = (data.get("role") or "").strip()
-                ok = (
-                    bool(first)
-                    and bool(last)
-                    and _re_sa_id.match(nid or "")
-                    and _re_phone.match(phone or "")
-                    and role in {"borrower", "lender"}
-                    and data.get("id_photo_uploaded") is True
-                )
-                if not ok:
+                
+                # Detailed validation with specific error messages
+                errors = []
+                if not first:
+                    errors.append("• First name is required")
+                if not last:
+                    errors.append("• Last name is required")
+                
+                # Re-validate phone
+                if not phone:
+                    errors.append("• Phone number is required")
+                elif not _re_phone.match(phone):
+                    # Try to normalize and re-check
+                    normalized = normalize_phone_number(phone)
+                    if normalized:
+                        phone = normalized
+                        data["phone_e164"] = normalized
+                    else:
+                        errors.append("• Phone number is invalid or in wrong format")
+                
+                # Re-validate ID with comprehensive check
+                if not nid:
+                    errors.append("• National ID number is required")
+                else:
+                    is_valid, error_msg = validate_sa_id_number(nid)
+                    if not is_valid:
+                        errors.append(f"• National ID: {error_msg}")
+                
+                if role not in {"borrower", "lender"}:
+                    errors.append("• Role must be selected")
+                
+                if not data.get("id_photo_uploaded"):
+                    errors.append("• ID photo must be uploaded")
+                
+                if errors:
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
                         "⚠️ <b>Validation Error</b>\n\n"
-                        "Some details are missing or invalid. Please go back and fix any issues.",
+                        "Please fix the following issues:\n\n"
+                        + "\n".join(errors) + "\n\n"
+                        "Please go back and correct any errors before confirming.",
                         kb_confirm(),
                         data=data,
                         parse_mode="HTML",
                     )
                     return
+                
                 # Update user info; user is guaranteed to exist at this point
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
                 fields = []
@@ -519,12 +663,39 @@ class RegisterCommand(BaseCommand):
         if step == S_PHONE:
             is_yes = text.lower() == "yes"
             current_phone = data.get("phone_e164", "")
-            phone_to_check = current_phone if is_yes else text
+            
+            if is_yes:
+                phone_to_check = current_phone
+            else:
+                # Try to normalize the input
+                normalized = normalize_phone_number(text)
+                if not normalized:
+                    mark_prev_keyboard(data, msg)
+                    reply(
+                        msg,
+                        "❌ <b>Invalid Phone Number</b>\n\n"
+                        "Phone number must be a valid South African number.\n\n"
+                        "<b>Accepted formats:</b>\n"
+                        "• <code>+27XXXXXXXXX</code> (e.g., +27123456789)\n"
+                        "• <code>0XXXXXXXXX</code> (e.g., 0123456789)\n"
+                        "• <code>27XXXXXXXXX</code> (e.g., 27123456789)\n\n"
+                        "<b>Requirements:</b>\n"
+                        "• Must start with area code: 1, 2, 6, 7, or 8\n"
+                        "• Must be 9 digits after country code\n\n"
+                        "Please enter a valid phone number or 'yes' if we have the right number on file.",
+                        kb_back_cancel(),
+                        data=data,
+                        parse_mode="HTML",
+                    )
+                    return
+                phone_to_check = normalized
+                text = normalized  # Use normalized version
+            
             if not _re_phone.match(phone_to_check or ""):
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "❌ <b>Invalid Phone Number</b>\n\n"
+                    "❌ <b>Invalid Phone Number Format</b>\n\n"
                     "Phone number must be in the format <code>+27XXXXXXXXX</code>.\n\n"
                     "Please enter a valid South African phone number or 'yes' if we have the right number on file.",
                     kb_back_cancel(),
@@ -532,8 +703,10 @@ class RegisterCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
+            
             if not is_yes:
-                data["phone_e164"] = text
+                data["phone_e164"] = text  # Store normalized version
+            
             set_step(fsm, msg.chat_id, CMD, S_NATID, data)
             mark_prev_keyboard(data, msg)
             reply(
@@ -546,27 +719,36 @@ class RegisterCommand(BaseCommand):
             return
 
         if step == S_NATID:
-            # Normalize input
+            # Normalize input (remove spaces, dashes)
             is_yes = text.lower() == "yes"
             current_id = data.get("national_id", "")
             id_to_check = current_id if is_yes else text
-
-            if not _re_sa_id.match(id_to_check or ""):
+            
+            # Validate using comprehensive validation
+            is_valid, error_msg = validate_sa_id_number(id_to_check)
+            
+            if not is_valid:
                 mark_prev_keyboard(data, msg)
                 reply(
                     msg,
-                    "❌ <b>Invalid ID Number</b>\n\n"
-                    "SA ID must be <b>13 digits</b>.\n\n"
-                    "Please enter a valid South African ID number (13 digits) or 'yes' if we have the right ID on file.",
+                    f"❌ <b>Invalid ID Number</b>\n\n"
+                    f"{error_msg}\n\n"
+                    "<b>Requirements:</b>\n"
+                    "• Must be exactly 13 digits\n"
+                    "• Must contain a valid date of birth (YYMMDD)\n"
+                    "• Must pass checksum validation\n\n"
+                    "Please enter a valid South African ID number or 'yes' if we have the right ID on file.",
                     kb_back_cancel(),
                     data=data,
                     parse_mode="HTML",
                 )
                 return
-
+            
             if not is_yes:
-                data["national_id"] = text
-
+                # Store cleaned version (remove any spaces/dashes user might have entered)
+                cleaned_id = re.sub(r'[\s\-]', '', text.strip())
+                data["national_id"] = cleaned_id
+            
             set_step(fsm, msg.chat_id, CMD, S_ROLE, data)
             mark_prev_keyboard(data, msg)
             reply(

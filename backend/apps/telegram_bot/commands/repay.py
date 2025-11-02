@@ -143,6 +143,9 @@ class RepayCommand(BaseCommand):
                     )
                     return
 
+                # Check FTC balance before proceeding
+                ftc_balance = float(ftc_service.get_balance(wallet_address))
+
                 # Get active loans (disbursed state)
                 active_loans = list(
                     Loan.objects.filter(user=user, state="disbursed").order_by(
@@ -157,6 +160,35 @@ class RepayCommand(BaseCommand):
                         "💼 <b>No Active Loans</b>\n\n"
                         "You don't have any active loans to repay.\n\n"
                         "Use /apply to request a new loan or /status to check your loan history.",
+                        parse_mode="HTML",
+                    )
+                    return
+
+                # Check if user has enough FTC for at least the smallest loan
+                # Calculate minimum repayment needed
+                loan_service = LoanSystemService()
+                min_repayment = None
+                for loan in active_loans:
+                    interest = loan_service.calculate_interest(
+                        principal=float(loan.amount),
+                        apr_bps=loan.apr_bps,
+                        term_days=loan.term_days,
+                    )
+                    total_due = float(loan.amount) + float(interest)
+                    remaining = total_due - float(loan.repaid_amount or 0)
+                    if min_repayment is None or remaining < min_repayment:
+                        min_repayment = remaining
+
+                if min_repayment and ftc_balance < min_repayment:
+                    mark_prev_keyboard({}, msg)
+                    reply(
+                        msg,
+                        "💸 <b>Insufficient FTC Balance</b>\n\n"
+                        f"Your FTC balance: {ftc_balance:,.2f} FTC\n"
+                        f"Minimum repayment needed: {min_repayment:,.2f} FTC\n\n"
+                        "⚠️ You don't have enough FTC tokens to repay any of your active loans.\n\n"
+                        "💡 <b>Solution:</b> Use /buyftc to purchase more FTC tokens.\n\n"
+                        "<i>After getting FTC, you can return here to complete your repayment.</i>",
                         parse_mode="HTML",
                     )
                     return

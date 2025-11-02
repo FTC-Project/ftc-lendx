@@ -118,15 +118,44 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
 
         elif instance.kind == "wallet_created":
             address = instance.payload.get("address")
-            private_key = instance.payload.get("private_key")
             text = (
                 f"<b>💰 Wallet Created </b>\n\n"
                 f"Your wallet has been successfully created on the blockchain!\n\n"
                 f"<b>Wallet Address:</b>\n"
                 f"<code>{address}</code>\n\n"
-                f"<b>Private Key:</b>\n<code>{private_key}</code>\n\n"
-                f"⚠️ Please store your private key safely!"
+                f"You can view your wallet details by using /balance"
             )
+        elif instance.kind == "lender_wallet_created":
+            address = instance.payload.get("address")
+            text = (
+                f"<b>💰 Lender Wallet Created </b>\n\n"
+                f"Your lender wallet has been successfully created on the blockchain!\n\n"
+                f"<b>Wallet Address:</b>\n"
+                f"<code>{address}</code>\n\n"
+                f"You can view your wallet details by using /balance"
+            )
+        elif instance.kind == "deposit_successful":
+            amount = instance.payload.get("amount")
+            deposit_tx_hash = instance.payload.get("deposit_tx_hash")
+            approve_tx_hash = instance.payload.get("approve_tx_hash")
+            before_pool = instance.payload.get("before_pool")
+            before_shares = instance.payload.get("before_shares")
+            after_pool = instance.payload.get("after_pool")
+            after_shares = instance.payload.get("after_shares")
+            text = (
+                f"<b>💰 Deposit Successful </b>\n\n"
+                f"Your deposit of <b>R{amount:,}</b> has been successful!\n\n"
+                f"<b>Deposit Details:</b>\n"
+                f"🔗 Deposit Transaction Hash: <code>{deposit_tx_hash}</code>\n"
+                f"🔗 Approval Transaction Hash: <code>{approve_tx_hash}</code>\n"
+                f"💰 Before Pool: <b>R{before_pool:,}</b>\n"
+                f"💰 Before Shares: <b>{before_shares:,}</b>\n"
+                f"💰 After Pool: <b>R{after_pool:,}</b>\n"
+                f"💰 After Shares: <b>{after_shares:,}</b>\n"
+                "You can view your deposit details by using /balance"
+            )
+            
+            
 
         else:
             # For other kinds, do not send a message

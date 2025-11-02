@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Optional
+from datetime import datetime, date
 
 from celery import shared_task
 
@@ -17,6 +18,15 @@ from backend.apps.tokens.services.credittrust_sync import CreditTrustTokenClient
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def _fmt_date(d) -> str:
+    """Format date/datetime objects for display."""
+    if not d:
+        return "N/A"
+    if isinstance(d, (datetime, date)):
+        return d.strftime("%Y-%m-%d %H:%M")
+    return str(d)
 
 # -------- Command config --------
 CMD = "balance"
@@ -103,6 +113,57 @@ class BalanceCommand(BaseCommand):
                     net_contrib = deposits_sum - withdrawals_sum
                     pnl = float(user_value) - net_contrib
 
+                    # Get recent deposit and withdrawal history (last 10 of each)
+                    recent_deposits = (
+                        PoolDeposit.objects.filter(user=user)
+                        .order_by("-created_at")[:10]
+                    )
+                    recent_withdrawals = (
+                        PoolWithdrawal.objects.filter(user=user)
+                        .order_by("-created_at")[:10]
+                    )
+
+                    # Build deposit history section
+                    deposit_history = ""
+                    if recent_deposits:
+                        deposit_history = (
+                            f"\n━━━━━━━━━━━━━━━━━━━━\n\n"
+                            f"📥 <b>Recent Deposits</b> (last {len(recent_deposits)})\n"
+                        )
+                        for deposit in recent_deposits:
+                            tx_link = f"<code>{deposit.tx_hash[:12]}...</code>" if deposit.tx_hash else "pending"
+                            deposit_history += (
+                                f"• <b>{float(deposit.amount):,.2f} FTCT</b>\n"
+                                f"  {_fmt_date(deposit.created_at)} | TX: {tx_link}\n"
+                            )
+                    else:
+                        deposit_history = (
+                            f"\n━━━━━━━━━━━━━━━━━━━━\n\n"
+                            f"📥 <b>Deposits:</b> No deposits yet\n"
+                        )
+
+                    # Build withdrawal history section
+                    withdrawal_history = ""
+                    if recent_withdrawals:
+                        withdrawal_history = (
+                            f"\n━━━━━━━━━━━━━━━━━━━━\n\n"
+                            f"📤 <b>Recent Withdrawals</b> (last {len(recent_withdrawals)})\n"
+                        )
+                        for withdrawal in recent_withdrawals:
+                            total_amount = float(withdrawal.principal_out + withdrawal.interest_out)
+                            tx_link = f"<code>{withdrawal.tx_hash[:12]}...</code>" if withdrawal.tx_hash else "pending"
+                            withdrawal_history += (
+                                f"• <b>{total_amount:,.2f} FTCT</b>\n"
+                                f"  Principal: {float(withdrawal.principal_out):,.2f} | "
+                                f"Interest: {float(withdrawal.interest_out):,.2f}\n"
+                                f"  {_fmt_date(withdrawal.created_at)} | TX: {tx_link}\n"
+                            )
+                    else:
+                        withdrawal_history = (
+                            f"\n━━━━━━━━━━━━━━━━━━━━\n\n"
+                            f"📤 <b>Withdrawals:</b> No withdrawals yet\n"
+                        )
+
                     message_text = (
                         f"💰 <b>Your Balances & Pool Position</b>\n\n"
                         f"<b>Wallet:</b> <code>{wallet_address}</code>\n\n"
@@ -115,6 +176,8 @@ class BalanceCommand(BaseCommand):
                         f"• Your Shares: {float(user_shares):,.6f}\n"
                         f"• Your Investment (est.): {float(user_value):,.2f} FTCT\n"
                         f"• Your PnL: {pnl:,.2f} FTCT\n"
+                        f"{deposit_history}"
+                        f"{withdrawal_history}"
                     )
                 else:
                     message_text = (

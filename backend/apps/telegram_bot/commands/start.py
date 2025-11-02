@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Dict, Optional
 from celery import shared_task
 
@@ -57,13 +58,17 @@ class StartCommand(BaseCommand):
 
         # --- Start flow ---
         if not state:
+            # Get TOS URL
+            public_url = os.getenv("PUBLIC_URL", "")
+            tos_url = f"{public_url.rstrip('/')}/tos/" if public_url else "#"
+            
             welcome = (
                 "Welcome to Nkadime! 🌟\n\n"
                 "We help you access affordable credit using your banking data.\n"
                 "All loans are in FTCoin (FTC), our stable digital currency.\n"
-                "1 FTC = 1 ZAR always.\n"
-                ""
-                "Before we get started, you'll need to accept our Terms of Service. <TOS link goes here>.\n"
+                "1 FTC = 1 ZAR always.\n\n"
+                f"Before we get started, you'll need to accept our Terms of Service. "
+                f"Read them here: {tos_url}\n\n"
                 "Do you accept the Terms of Service?"
             )
             # Ask ToS
@@ -106,13 +111,26 @@ class StartCommand(BaseCommand):
                 clear_flow(fsm, msg.chat_id)
 
                 # Confirm + show quick help
+                welcome_message = (
+                    "✅ <b>Thanks for accepting the Terms of Service!</b>\n"
+                    "Your account has been created.\n\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "🌟 <b>Welcome to Nkadime!</b>\n\n"
+                    "We help you access affordable credit using your banking data.\n"
+                    "We also allow you to be a lender and earn interest on your deposits.\n\n"
+                    "💵 <b>1 FTC = 1 ZAR always</b>\n\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "📋 <b>Get Started:</b>\n\n"
+                    "To begin, we'll need to verify you and have you select a role.\n"
+                    "You can do this by using the <code>/register</code> command.\n\n"
+                    "💡 <i>Otherwise, you can use the <code>/help</code> command to see all available commands and some FAQs.</i>"
+                )
                 reply(
                     msg,
-                    "✅ Thanks for accepting the Terms of Service. Your account has been created!\n\n",
+                    welcome_message,
                     data=data,
+                    parse_mode="HTML",
                 )
-                # Can we show help right away, the help command exists so why not
-                HelpCommand().handle(msg)
                 return
 
             if cb == "flow:decline":

@@ -166,7 +166,7 @@ class WithdrawCommand(BaseCommand):
             return
 
 
-@shared_task(queue="scoring")
+@shared_task(queue="scoring", time_limit=120)
 def process_withdraw_task(message_data: dict) -> None:
     msg = TelegramMessage.from_payload(message_data)
     fsm = FSMStore()
@@ -184,7 +184,9 @@ def process_withdraw_task(message_data: dict) -> None:
         total_shares = float(ls.get_total_shares())
         # compute needed shares for desired FTCT amount
         if total_pool <= 0 or total_shares <= 0:
-            raise ValueError("Pool is empty")
+            clear_flow(fsm, msg.chat_id)
+            reply(msg, "❌ Pool is empty")
+            return
         shares_needed = Decimal(amount) * Decimal(total_shares) / Decimal(total_pool)
 
         # Execute withdraw by shares

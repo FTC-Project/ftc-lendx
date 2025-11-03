@@ -1,0 +1,20 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Nkadime{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.ico' %}" />
+    {% block head_meta %}{% endblock %}
+    <link rel="stylesheet" href="{% static 'css/app.css' %}" />
+    {% block head_css %}{% endblock %}
+  </head>
+  <body>
+    <div class="logo">Nkadime</div>
+    {% block content %}{% endblock %}
+
+    {% block scripts %}{% endblock %}
+  </body>
+</html>
+

@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Nkadime – Processing Deposit{% endblock %}
+
+{% block content %}
+<div class="container" style="margin-top:72px;">
+  <h1 class="gradient">Processing Deposit</h1>
+  <div class="spinner-container">
+    <div class="spinner">
+      <div class="spinner-ring"></div>
+      <div class="spinner-ring"></div>
+    </div>
+  </div>
+  <div class="status-text" id="statusText">Initializing transaction...</div>
+  <div id="steps">
+    <div class="step" id="step-approve">
+      <span class="step-icon">⏳</span>
+      <span>Approving FTCT spending</span>
+    </div>
+    <div class="step" id="step-deposit">
+      <span class="step-icon">⏳</span>
+      <span>Depositing to pool</span>
+    </div>
+    <div class="step" id="step-confirm">
+      <span class="step-icon">⏳</span>
+      <span>Confirming on blockchain</span>
+    </div>
+  </div>
+  <div class="info-box">
+    <strong>💡 Tip:</strong>
+    You can withdraw your funds anytime using the <code>/withdraw</code> command in Telegram.
+    The withdrawal will redeem your pool shares for FTCT.
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  window.__DEPOSIT_CONTEXT__ = {
+    taskId: '{{ task_id }}',
+    amount: {{ amount|floatformat:2 }}
+  };
+</script>
+<script src="{% static 'js/deposit_loading.js' %}"></script>
+{% endblock %}
+

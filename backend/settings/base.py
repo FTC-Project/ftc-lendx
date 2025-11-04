@@ -151,9 +151,17 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": "INFO"},
     "loggers": {
         "django": {"handlers": ["console"], "level": "INFO", "propagate": True},
-        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.request": {
+            "handlers": ["console"],
+            "level": "ERROR",
+            "propagate": False,
+        },
         "uvicorn.error": {"handlers": ["console"], "level": "INFO", "propagate": True},
-        "uvicorn.access": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "uvicorn.access": {
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
     },
 }
 

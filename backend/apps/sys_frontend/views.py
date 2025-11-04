@@ -601,7 +601,8 @@ def deposit_ftct_data(request):
                     w = Wallet.objects.filter(address=wallet_q).first()
                     if w:
                         deposits_sum = sum(
-                            float(d.amount) for d in PoolDeposit.objects.filter(user=w.user)
+                            float(d.amount)
+                            for d in PoolDeposit.objects.filter(user=w.user)
                         )
                         withdrawals_sum = sum(
                             float(wd.principal_out + wd.interest_out)

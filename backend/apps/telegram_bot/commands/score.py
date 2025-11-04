@@ -60,7 +60,7 @@ def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
     loans = Loan.objects.filter(user=snap.user, state="disbursed")
     used_limit = sum(loan.amount for loan in loans)
     remaining_limit = snap.limit - used_limit if used_limit < snap.limit else 0
-    
+
     if snap.limit == 0:
         return (
             f"<b>📊 Your Unified Score</b>\n\n"
@@ -79,7 +79,7 @@ def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
             f"• Build your CTT token balance to improve your unified score\n\n"
             f"<i>Better scores and positive affordability unlock higher limits and lower APR.</i>"
         )
-    
+
     return (
         f"<b>📊 Your Unified Score</b>\n\n"
         f"<b>Score Tier:</b> {snap.score_tier}\n"
@@ -97,7 +97,7 @@ def render_score_snapshot(snap: AffordabilitySnapshot) -> str:
 def render_score_details(snap: AffordabilitySnapshot) -> str:
     """Render credit factors breakdown with human-readable names."""
     f = snap.credit_factors or {}
-    
+
     # Mapping of factor keys to human-readable names
     factor_names = {
         "months_on_book": "Months on Book",
@@ -110,54 +110,63 @@ def render_score_details(snap: AffordabilitySnapshot) -> str:
         "outgoing_frequency": "Outgoing Frequency",
         "affordability_buffer": "Affordability Buffer",
     }
-    
+
     if not f:
         return "<b>🧾 Score Breakdown</b>\n\n<i>No factor breakdown available.</i>"
-    
+
     # Group factors logically
     account_stability = []
     transaction_patterns = []
     affordability_metrics = []
-    
+
     for key, value in f.items():
         if value is None:
             continue
-            
+
         name = factor_names.get(key, key.replace("_", " ").title())
-        formatted_value = f"{float(value):.2f}" if isinstance(value, (int, float)) else str(value)
-        
+        formatted_value = (
+            f"{float(value):.2f}" if isinstance(value, (int, float)) else str(value)
+        )
+
         if key in ["months_on_book", "direction_ratio"]:
             account_stability.append((name, formatted_value))
-        elif key in ["incoming_volume", "outgoing_volume", "incoming_variance", "outgoing_variance", "incoming_frequency", "outgoing_frequency"]:
+        elif key in [
+            "incoming_volume",
+            "outgoing_volume",
+            "incoming_variance",
+            "outgoing_variance",
+            "incoming_frequency",
+            "outgoing_frequency",
+        ]:
             transaction_patterns.append((name, formatted_value))
         elif key in ["affordability_buffer"]:
             affordability_metrics.append((name, formatted_value))
         else:
             # Fallback for any unknown factors
             transaction_patterns.append((name, formatted_value))
-    
+
     details = ""
-    
+
     if account_stability:
         details += "<b>📊 Account Stability</b>\n"
         for name, value in account_stability:
             details += f"• {name}: <b>{value}</b>\n"
         details += "\n"
-    
+
     if transaction_patterns:
         details += "<b>💳 Transaction Patterns</b>\n"
         for name, value in transaction_patterns:
             details += f"• {name}: <b>{value}</b>\n"
         details += "\n"
-    
+
     if affordability_metrics:
         details += "<b>💰 Affordability</b>\n"
         for name, value in affordability_metrics:
             details += f"• {name}: <b>{value}</b>\n"
-    
+
     if not details:
         details = "<i>No factor breakdown available.</i>"
-    
+
     return f"<b>🧾 Score Breakdown</b>\n\n{details}"
 
 
@@ -329,7 +338,7 @@ class UnifiedScoreCommand(BaseCommand):
                 data=data,
             )
             return
-        
+
         # Handle text messages (non-callback) when in flow
         # If user sends text while in S_TIPS or S_DETAILS, show the menu again
         if step == S_TIPS:
@@ -354,7 +363,7 @@ class UnifiedScoreCommand(BaseCommand):
                 parse_mode="HTML",
             )
             return
-        
+
         # Fallback: reset flow
         clear_flow(fsm, msg.chat_id)
         reply(msg, "Session lost. Please use /score to start again.")

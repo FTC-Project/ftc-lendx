@@ -209,29 +209,29 @@ def normalize_phone_number(phone: str) -> Optional[str]:
     """
     if not phone:
         return None
-    
+
     # Remove all non-digit characters except +
-    cleaned = re.sub(r'[^\d+]', '', phone.strip())
-    
+    cleaned = re.sub(r"[^\d+]", "", phone.strip())
+
     # Handle different formats
-    if cleaned.startswith('+27'):
+    if cleaned.startswith("+27"):
         # Already in correct format, just ensure it's exactly 12 digits after +
         digits = cleaned[3:]
-        if len(digits) == 9 and digits[0] in ['1', '2', '6', '7', '8']:
+        if len(digits) == 9 and digits[0] in ["1", "2", "6", "7", "8"]:
             return f"+27{digits}"
-    
-    elif cleaned.startswith('27'):
+
+    elif cleaned.startswith("27"):
         # Missing + prefix
         digits = cleaned[2:]
-        if len(digits) == 9 and digits[0] in ['1', '2', '6', '7', '8']:
+        if len(digits) == 9 and digits[0] in ["1", "2", "6", "7", "8"]:
             return f"+27{digits}"
-    
-    elif cleaned.startswith('0'):
+
+    elif cleaned.startswith("0"):
         # Local format (remove leading 0)
         digits = cleaned[1:]
-        if len(digits) == 9 and digits[0] in ['1', '2', '6', '7', '8']:
+        if len(digits) == 9 and digits[0] in ["1", "2", "6", "7", "8"]:
             return f"+27{digits}"
-    
+
     return None
 
 
@@ -239,7 +239,7 @@ def validate_sa_id_number(id_number: str) -> Tuple[bool, Optional[str]]:
     """
     Validate South African ID number with comprehensive checks.
     Returns (is_valid, error_message).
-    
+
     SA ID format: YYMMDDGSSSCAZ
     - YYMMDD: Date of birth
     - G: Gender (0-4 = female, 5-9 = male)
@@ -250,65 +250,69 @@ def validate_sa_id_number(id_number: str) -> Tuple[bool, Optional[str]]:
     """
     if not id_number:
         return False, "ID number cannot be empty"
-    
+
     # Remove spaces and dashes
-    id_clean = re.sub(r'[\s\-]', '', id_number.strip())
-    
+    id_clean = re.sub(r"[\s\-]", "", id_number.strip())
+
     # Must be exactly 13 digits
-    if not re.match(r'^\d{13}$', id_clean):
+    if not re.match(r"^\d{13}$", id_clean):
         return False, "ID number must be exactly 13 digits"
-    
+
     # Extract components
     birth_date_str = id_clean[:6]  # YYMMDD
     gender_digit = int(id_clean[6])
     citizenship_digit = int(id_clean[10])
     checksum_digit = int(id_clean[12])
-    
+
     # Validate date of birth
     try:
         year = int(birth_date_str[:2])
         month = int(birth_date_str[2:4])
         day = int(birth_date_str[4:6])
-        
+
         # Handle century (00-21 = 2000-2021, 22-99 = 1922-1999)
         if year <= 21:
             full_year = 2000 + year
         else:
             full_year = 1900 + year
-        
+
         # Validate date
         from datetime import datetime
+
         datetime(full_year, month, day)
     except (ValueError, TypeError):
         return False, "ID number contains an invalid date of birth"
-    
+
     # Validate gender digit (0-9 are valid, but 0-4 typically female, 5-9 male)
     if gender_digit < 0 or gender_digit > 9:
         return False, "ID number has invalid gender digit"
-    
+
     # Validate citizenship (0 = SA citizen, 1 = permanent resident)
     if citizenship_digit not in [0, 1]:
         return False, "ID number has invalid citizenship digit"
-    
+
     # Luhn algorithm checksum validation
     def luhn_checksum(id_str: str) -> int:
         """Calculate Luhn checksum for SA ID."""
         # Sum of digits in odd positions (1-indexed)
         sum_odd = sum(int(id_str[i]) for i in range(0, 12, 2))
-        
+
         # For even positions, multiply by 2 and sum digits
         sum_even = 0
         for i in range(1, 12, 2):
             doubled = int(id_str[i]) * 2
             sum_even += doubled if doubled < 10 else (doubled % 10) + (doubled // 10)
-        
+
         total = sum_odd + sum_even
         return (10 - (total % 10)) % 10
-    
+
     expected_checksum = luhn_checksum(id_clean)
     if checksum_digit != expected_checksum:
-        return False, f"ID number checksum validation failed. Expected checksum: {expected_checksum}, got: {checksum_digit}"
-    
+        return (
+            False,
+            f"ID number checksum validation failed. Expected checksum: {expected_checksum}, got: {checksum_digit}",
+        )
+
     return True, None
 
 
@@ -472,14 +476,14 @@ class RegisterCommand(BaseCommand):
                 phone = (data.get("phone_e164") or "").strip()
                 nid = (data.get("national_id") or "").strip()
                 role = (data.get("role") or "").strip()
-                
+
                 # Detailed validation with specific error messages
                 errors = []
                 if not first:
                     errors.append("• First name is required")
                 if not last:
                     errors.append("• Last name is required")
-                
+
                 # Re-validate phone
                 if not phone:
                     errors.append("• Phone number is required")
@@ -491,7 +495,7 @@ class RegisterCommand(BaseCommand):
                         data["phone_e164"] = normalized
                     else:
                         errors.append("• Phone number is invalid or in wrong format")
-                
+
                 # Re-validate ID with comprehensive check
                 if not nid:
                     errors.append("• National ID number is required")
@@ -499,27 +503,28 @@ class RegisterCommand(BaseCommand):
                     is_valid, error_msg = validate_sa_id_number(nid)
                     if not is_valid:
                         errors.append(f"• National ID: {error_msg}")
-                
+
                 if role not in {"borrower", "lender"}:
                     errors.append("• Role must be selected")
-                
+
                 if not data.get("id_photo_uploaded"):
                     errors.append("• ID photo must be uploaded")
-                
+
                 if errors:
                     mark_prev_keyboard(data, msg)
                     reply(
                         msg,
                         "⚠️ <b>Validation Error</b>\n\n"
                         "Please fix the following issues:\n\n"
-                        + "\n".join(errors) + "\n\n"
+                        + "\n".join(errors)
+                        + "\n\n"
                         "Please go back and correct any errors before confirming.",
                         kb_confirm(),
                         data=data,
                         parse_mode="HTML",
                     )
                     return
-                
+
                 # Update user info; user is guaranteed to exist at this point
                 user = TelegramUser.objects.get(telegram_id=msg.user_id)
                 fields = []
@@ -663,7 +668,7 @@ class RegisterCommand(BaseCommand):
         if step == S_PHONE:
             is_yes = text.lower() == "yes"
             current_phone = data.get("phone_e164", "")
-            
+
             if is_yes:
                 phone_to_check = current_phone
             else:
@@ -690,7 +695,7 @@ class RegisterCommand(BaseCommand):
                     return
                 phone_to_check = normalized
                 text = normalized  # Use normalized version
-            
+
             if not _re_phone.match(phone_to_check or ""):
                 mark_prev_keyboard(data, msg)
                 reply(
@@ -703,10 +708,10 @@ class RegisterCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-            
+
             if not is_yes:
                 data["phone_e164"] = text  # Store normalized version
-            
+
             set_step(fsm, msg.chat_id, CMD, S_NATID, data)
             mark_prev_keyboard(data, msg)
             reply(
@@ -723,10 +728,10 @@ class RegisterCommand(BaseCommand):
             is_yes = text.lower() == "yes"
             current_id = data.get("national_id", "")
             id_to_check = current_id if is_yes else text
-            
+
             # Validate using comprehensive validation
             is_valid, error_msg = validate_sa_id_number(id_to_check)
-            
+
             if not is_valid:
                 mark_prev_keyboard(data, msg)
                 reply(
@@ -743,12 +748,12 @@ class RegisterCommand(BaseCommand):
                     parse_mode="HTML",
                 )
                 return
-            
+
             if not is_yes:
                 # Store cleaned version (remove any spaces/dashes user might have entered)
-                cleaned_id = re.sub(r'[\s\-]', '', text.strip())
+                cleaned_id = re.sub(r"[\s\-]", "", text.strip())
                 data["national_id"] = cleaned_id
-            
+
             set_step(fsm, msg.chat_id, CMD, S_ROLE, data)
             mark_prev_keyboard(data, msg)
             reply(

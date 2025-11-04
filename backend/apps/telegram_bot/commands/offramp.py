@@ -375,8 +375,7 @@ class OfframpCommand(BaseCommand):
                     logger.info(
                         f"[Offramp] Transferring {amount} FTC from user {user.telegram_id} to burn wallet"
                     )
-                    
-                    
+
                     burn_result = ftc_service.transfer(
                         from_address=wallet_address,
                         to_address=burn_wallet,

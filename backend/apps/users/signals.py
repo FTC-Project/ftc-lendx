@@ -39,7 +39,7 @@ def send_notification_on_creation(sender, instance, created, **kwargs):
         if instance.kind == "score_updated":
             score = instance.payload.get("score")
             tier = instance.payload.get("tier", "unknown")
-            limit = instance.payload.get("limit")                
+            limit = instance.payload.get("limit")
             if score is not None:
                 if limit == 0:
                     text = (

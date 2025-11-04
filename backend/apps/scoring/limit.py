@@ -40,7 +40,7 @@ def calculate_credit_limit(transactions: pd.DataFrame, trust_score: float):
 
     # Calculate limit based on trust score and affordability
     limit, apr = limit_apr_gate(trust_score)
-    
+
     # Calculate affordability-based cap (3x monthly affordability)
     # Only consider positive affordability - negative means they can't afford loans
     if affordability > 0:
@@ -51,7 +51,7 @@ def calculate_credit_limit(transactions: pd.DataFrame, trust_score: float):
         # Negative affordability means they're spending more than they earn
         # Set limit to 0 regardless of score
         limit = 0
-    
+
     # Ensure limit is never negative (safety check)
     limit = max(limit, 0)
 
